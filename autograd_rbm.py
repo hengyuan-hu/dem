@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 def get_session():
     # config = tf.ConfigProto(log_device_placement=True)
-    config = tf.ConfigProto() # log_device_placement=True)
+    config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     log_device_placement=True
     return tf.Session(config=config)
@@ -30,14 +30,6 @@ class RBM(object):
             self.hbias = tf.get_variable(
                 'hbias', shape=[1, self.num_hid],
                 initializer=tf.constant_initializer(0.0))
-
-            # # for testing
-            # self.vbias = tf.get_variable(
-            #     'vbias', shape=[1, self.num_vis],
-            #     initializer=tf.random_normal_initializer(0, 0.01))
-            # self.hbias = tf.get_variable(
-            #     'hbias', shape=[1, self.num_hid],
-            #     initializer=tf.random_normal_initializer(0, 0.01))
 
         self.params = [self.weights, self.vbias, self.hbias]
         self.sess = get_session()
@@ -104,22 +96,18 @@ class RBM(object):
         cost = (tf.reduce_mean(self.free_energy(vis))
                 - tf.reduce_mean(self.free_energy(recon_vis_samples)))
 
-        grads = tf.gradients(cost, self.params)
         updates = []
-        for grad, param in zip(grads, self.params):
-            updates.append(param.assign(param - lr * grad))
-
         if persistent_vis is not None:
             updates.append(persistent_vis.assign(recon_vis_samples))
 
         loss = self.l2_loss_function(vis)
-        return loss, updates, grads
+        return loss, cost, updates
 
     def l2_loss_function(self, vis):
         recon_vis_p, _ = self.vhv(vis)
         num_dims = len(vis.get_shape().as_list())
         dims = range(num_dims)
-        total_loss = tf.reduce_sum(tf.square(vis - recon_vis_p), reduction_indices=1)#dims[1:])
+        total_loss = tf.reduce_sum(tf.square(vis - recon_vis_p), dims[1:])
         return tf.reduce_mean(total_loss)
 
     def train(self, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
@@ -138,7 +126,9 @@ class RBM(object):
         else:
             persistent_vis = None
             
-        loss, updates, grads = self.get_loss_updates(ph_lr, ph_vis, persistent_vis, cd_k)
+        loss, cost, updates = self.get_loss_updates(ph_lr, ph_vis, persistent_vis, cd_k)
+        opt = tf.train.GradientDescentOptimizer(ph_lr)
+        train_step = opt.minimize(cost)
 
         with self.sess.as_default():
             # merged = tf.merge_all_summaries()
@@ -147,17 +137,15 @@ class RBM(object):
 
             for i in range(num_epoch):
                 t = time.time()
-                # np.random.shuffle(train_xs)
+                np.random.shuffle(train_xs)
                 loss_vals = np.zeros(num_batches)
                 for b in range(num_batches):
                     batch_xs = train_xs[b * batch_size:(b+1) * batch_size]
 
-                    loss_vals[b], _, grad_val = self.sess.run(
-                        [loss, updates, grads], feed_dict={ ph_vis: batch_xs, ph_lr: lr })
-                    # print (grad_val[0] > 0).sum()
-                    # train_writer.add_summary(summary, i)
+                    loss_vals[b], _, _ = self.sess.run(
+                        [loss, train_step, updates], feed_dict={ ph_vis: batch_xs, ph_lr: lr })
                 print 'Train Loss:', loss_vals.mean()
-                print 'Time took:', time.time() - t
+                print '... Time took:', time.time() - t
                 if output_dir is not None:
                     saver = tf.train.Saver()
                     save_path = saver.save(
@@ -231,4 +219,4 @@ if __name__ == '__main__':
     # rbm.train(train_xs, 0.001, 5, batch_size, True, None, '.')
     # train(self, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
     # rbm.train(train_xs, 0.1, 40, batch_size, False, 1, None)
-    rbm.train(train_xs, 0.001, 40, batch_size, True, 1, 'test')
+    rbm.train(train_xs, 0.001, 40, batch_size, True, 1, None)
