@@ -1,6 +1,7 @@
 import numpy as np
 import cPickle
 import os
+import time
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
@@ -38,8 +39,9 @@ class RBM(object):
         return vis_p
 
     def sample(self, ps):
-        samples = tf.contrib.distributions.Bernoulli(p=ps).sample()
-        return tf.to_float(samples)
+        rand_uniform = tf.random_uniform(ps.get_shape().as_list(), 0, 1)
+        samples = tf.to_float(rand_uniform < ps)
+        return samples
 
     def vhv(self, vis_samples):
         hid_samples = self.sample(self.compute_up(vis_samples))
@@ -63,8 +65,8 @@ class RBM(object):
         vis_p = self.compute_down(persistent_hid)
         vis_samples = self.sample(vis_p)
         new_hid_p = self.compute_up(vis_samples)
-        pcd_update =  persistent_hid.assign(self.sample(new_hid_p))
-        return vis_p, new_hid_p, pcd_update
+        new_hid_samples = self.sample(new_hid_p)
+        return vis_samples, new_hid_p, persistent_hid.assign(new_hid_samples)
 
     def collect_stats(self, vis, hid, batch_size):
         stats_w = tf.matmul(tf.transpose(vis), hid) / batch_size
@@ -79,16 +81,15 @@ class RBM(object):
 
         if use_pcd:
             assert persistent_hid is not None
-            recon_vis_p, recon_hid_p, pcd_update = self.pcd(persistent_hid)
+            recon_vis_samples, recon_hid_p, pcd_update = self.pcd(persistent_hid)
         else:
             assert cd_k is not None
             recon_vis_p, recon_vis_samples = self.cd(vis, cd_k)
-            # emperically, its better to vis_p for this final step 
             recon_hid_p = self.compute_up(recon_vis_samples)
             pcd_update = None
 
         neg_stats_w, neg_stats_vbias, neg_stats_hbias = self.collect_stats(
-            recon_vis_p, recon_hid_p, batch_size)
+            recon_vis_samples, recon_hid_p, batch_size)
 
         dw = pos_stats_w - neg_stats_w
         dvbias = pos_stats_vbias - neg_stats_vbias
@@ -144,6 +145,7 @@ class RBM(object):
 
             for i in range(num_epoch):
                 # np.random.shuffle(train_xs)
+                t = time.time()
                 loss_vals = np.zeros(num_batches)
                 for b in range(num_batches):
                     batch_xs = train_xs[b * batch_size:(b+1) * batch_size]
@@ -154,8 +156,11 @@ class RBM(object):
                     # train_writer.add_summary(summary, i)
                     loss_vals[b] = loss_val
                 print 'Train Loss:', loss_vals.mean()
+                print 'Time took:', time.time() - t
 
                 if output_dir is not None:
+                    if not os.path.exists(output_dir):
+                        os.makedirs(output_dir)
                     saver = tf.train.Saver()
                     save_path = saver.save(
                         self.sess,
@@ -185,7 +190,7 @@ class RBM(object):
 
     def sample_from_rbm(self, num_examples, num_steps, init=None):
         num_steps_holder = tf.placeholder(tf.int32, ())
-        vis = tf.placeholder(tf.float32, (None, self.num_vis))
+        vis = tf.placeholder(tf.float32, (num_examples, self.num_vis))
 
         def cond(x, vis_p, vis_samples):
             return tf.less(x, num_steps_holder)
@@ -222,8 +227,8 @@ def vis_weights(weights, rows, cols, neuron_shape, output_name=None):
 if __name__ == '__main__':
     (train_xs, _), _, _ = cPickle.load(file('mnist.pkl', 'rb'))
 
-    batch_size =  20
-    rbm = RBM(784, 500, 'new-cd10')
+    batch_size = 20
+    rbm = RBM(784, 500, 'new-pcd')
     # rbm.load_model('./rbm.ckpt')
-    # rbm.train(train_xs, 0.001, 5, batch_size, True, None, '.')
-    rbm.train(train_xs, 0.1, 40, batch_size, False, 10, 'new-cd10')
+    rbm.train(train_xs, 0.001, 40, batch_size, True, None, rbm.name)
+    # rbm.train(train_xs, 0.1, 40, batch_size, False, 10, rbm.name)
