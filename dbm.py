@@ -5,27 +5,40 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from rbm import RBM
 from crbm import CRBM
+import train_rbm
 
 
 class DBM(object):
-    def __init__(self, dim_list, name='dbm'):
-        # self.num_rbm = len(dim_list) - 1
-        # self.num_rbm = 0
+    def __init__(self, vis_shape, name='dbm'):
+        self.vis_shape = list(vis_shape)
+        self.last_conv = None    # index of the final crbm layer
+        self.num_rbm = 0
+        self.rbm_list = []
 
-        self.rbm_list = [
-            CRBM((28, 28, 1), (5, 5, 1, 64), (2, 2), 'SAME', 'conv1', {}),
-            CRBM((14, 14, 64), (5, 5, 64, 64), (2, 2), 'SAME', 'conv2', {}),
-            RBM(3136, 500, 'fc1'),
-        ]
-        self.last_conv = 1
+    def add_conv_layer(self, filter_shape, stride, padding, name, params={}):
+        assert self.last_conv is None, 'cannot add conv layer after fc layers'
 
-        # for i in range(len(dim_list) - 1):
-        #     self.rbm_list.append(RBM(dim_list[i], dim_list[i+1], 'rbm_%d' % i))
+        if self.num_rbm == 0:
+            vis_shape = self.vis_shape
+        else:
+            vis_shape = self.rbm_list[-1].hid_shape
 
-        self.num_rbm = len(self.rbm_list)
-        self.input_dim = [28, 28, 1]
-        # dim_list[:1]
-    
+        rbm = CRBM(vis_shape, filter_shape, stride, padding, name, params)
+        self.num_rbm += 1
+        self.rbm_list.append(rbm)
+
+    def add_fc_layer(self, num_hid, name):
+        self.last_conv = self.num_rbm - 1
+
+        if self.num_rbm == 0:
+            num_vis = int(np.prod(self.vis_shape))
+        else:
+            num_vis = int(np.prod(self.rbm_list[-1].hid_shape))
+
+        rbm = RBM(num_vis, num_hid, name)
+        self.num_rbm += 1
+        self.rbm_list.append(rbm)
+
     def compute_up(self, vis_samples):
         """Returns last hidden sample and samples list."""
         samples_list = [vis_samples]
@@ -140,7 +153,11 @@ if __name__ == '__main__':
     train_xs = train_xs.reshape((-1, 28, 28, 1))
     batch_size = 20
     lr = 0.001 if use_pcd else 0.1
+
     # dbm = DBM([784, 500, 500, 1000])
-    dbm = DBM([]) # [784, 500, 500, 1000])
+    dbm = DBM([28, 28, 1]) # [784, 500, 500, 1000])
+    dbm.add_conv_layer((5, 5, 1, 64), (2, 2), 'SAME', 'conv1')
+    dbm.add_conv_layer((5, 5, 64, 64), (2, 2), 'SAME', 'conv2')
+    dbm.add_fc_layer(500, 'fc1')
 
     train_rbm.train(dbm, train_xs, lr, 40, batch_size, use_pcd, cd_k, output_dir)
