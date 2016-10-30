@@ -1,17 +1,8 @@
 import numpy as np
 import cPickle
-import os
-import time
+import os, sys
 import tensorflow as tf
-import matplotlib.pyplot as plt
-
-
-def get_session():
-    # config = tf.ConfigProto(log_device_placement=True)
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    log_device_placement=True
-    return tf.Session(config=config)
+import train_rbm
 
 
 class CRBM(object):
@@ -31,23 +22,22 @@ class CRBM(object):
         assert padding == 'SAME' or padding == 'VALID'
 
         self.vis_shape = list(input_shape)
+        self.input_dim = self.vis_shape
         self.filter_shape = list(filter_shape)
         self.vbias_shape = list(input_shape[-1:])
         self.hbias_shape = list(filter_shape[-1:])
         self.strides = [1, strides[0], strides[1], 1]
         self.padding = padding
-        self.name = name
+        self.name = name if name else 'crbm'
 
         weights_init, vbias_init, hbias_init = self._get_initializers(params)
-        with tf.variable_scope(name):
+        with tf.variable_scope(self.name):
             self.weights = tf.get_variable(
                 'weights', shape=self.filter_shape, initializer=weights_init)
             self.vbias = tf.get_variable(
                 'vbias', shape=self.vbias_shape, initializer=vbias_init)
             self.hbias = tf.get_variable(
                 'hbias', shape=self.hbias_shape, initializer=hbias_init)
-
-        self.sess = get_session()
 
     def _get_initializers(self, params):
         if 'weights' in params:
@@ -83,7 +73,8 @@ class CRBM(object):
 
     def compute_down(self, hid):
         output_shape = hid.get_shape().as_list()[:1] + self.vis_shape
-        deconv = tf.nn.conv2d_transpose(hid, self.weights, output_shape, self.strides, self.padding)
+        deconv = tf.nn.conv2d_transpose(hid, self.weights, output_shape,
+                                        self.strides, self.padding)
         deconv = tf.nn.bias_add(deconv, self.vbias)
         print 'deconv_shape:',  deconv.get_shape().as_list()
         print 'original vis_shape', self.vis_shape
@@ -101,8 +92,6 @@ class CRBM(object):
         return: free energy of shape: [batch_size, 1]
         """
         assert(len(vis_samples.get_shape().as_list()) == 4)
-        # assert(self.vbias_shape == [1]), '1 channel input only'
-        # vbias_term = tf.reduce_sum(vis_samples, reduction_indices=[1, 2, 3]) * self.vbias
         vbias_term = tf.reduce_sum(vis_samples, reduction_indices=[2,3]) * self.vbias
         vbias_term = tf.reduce_sum(vbias_term, reduction_indices=[1])
 
@@ -149,12 +138,8 @@ class CRBM(object):
         cost = (tf.reduce_mean(self.free_energy(vis))
                 - tf.reduce_mean(self.free_energy(recon_vis_samples)))
 
-        updates = []
-        if persistent_vis is not None:
-            updates.append(persistent_vis.assign(recon_vis_samples))
-
         loss = self.l2_loss_function(vis)
-        return loss, cost, updates
+        return loss, cost, recon_vis_samples
 
     def l2_loss_function(self, vis):
         recon_vis_p, _ = self.vhv(vis)
@@ -163,116 +148,37 @@ class CRBM(object):
         total_loss = tf.reduce_sum(tf.square(vis - recon_vis_p), dims[1:])
         return tf.reduce_mean(total_loss)
 
-    def train(self, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
-        train_xs = train_xs.reshape((-1, 28, 28, 1))
-        vis_shape = train_xs.shape[1:]    # shape of single image
-        batch_shape = (batch_size,) + vis_shape
-        num_batches = len(train_xs) / batch_size
-        assert num_batches * batch_size == len(train_xs)
-
-        # graph related definitions
-        ph_vis = tf.placeholder(tf.float32, batch_shape, name='vis_input')
-        ph_lr = tf.placeholder(tf.float32, (), name='lr')
-        if use_pcd:
-            persistent_vis = tf.get_variable(
-                'persistent_vis', shape=batch_shape,
-                initializer=tf.random_uniform_initializer(0, 1))
-        else:
-            persistent_vis = None
-            
-        loss, cost, updates = self.get_loss_updates(ph_lr, ph_vis, persistent_vis, cd_k)
-        opt = tf.train.GradientDescentOptimizer(ph_lr)
-        train_step = opt.minimize(cost)
-
-        with self.sess.as_default():
-            # merged = tf.merge_all_summaries()
-            train_writer = tf.train.SummaryWriter('./train', self.sess.graph)
-            tf.initialize_all_variables().run()
-
-            for i in range(num_epoch):
-                t = time.time()
-                np.random.shuffle(train_xs)
-                loss_vals = np.zeros(num_batches)
-                for b in range(num_batches):
-                    batch_xs = train_xs[b * batch_size:(b+1) * batch_size]
-
-                    loss_vals[b], _, _ = self.sess.run(
-                        [loss, train_step, updates], feed_dict={ ph_vis: batch_xs, ph_lr: lr })
-                print 'Train Loss:', loss_vals.mean()
-                print '... Time took:', time.time() - t
-                if output_dir is not None:
-                    saver = tf.train.Saver()
-                    save_path = saver.save(
-                        self.sess,
-                        os.path.join(output_dir, '%s-epoch%d.ckpt' % (self.name, i)))
-                    print 'Model saved to:', save_path
-                    prob_imgs, _ = self.sample_from_rbm(100, 1000)
-                    prob_imgs = prob_imgs.reshape(100, -1)
-                    img_path = os.path.join(output_dir, 'epoch%d-plot.png' % i)
-                    vis_weights(prob_imgs.T, 10, 10, (28, 28), img_path)
-                    params = self.get_model_parameters()
-                    params_vis_path = os.path.join(output_dir, 'epoch%d-filters.png' % i)
-                    vis_weights(
-                        params['weights'].reshape((-1, self.filter_shape[-1]))[:,:100],
-                        10, 10, (5, 5), params_vis_path)
-
-    def load_model(self, model_path):
-        with self.sess.as_default():
-            tf.initialize_all_variables().run()
-            saver = tf.train.Saver()
-            saver.restore(self.sess, model_path)
-        print 'Model loaded from:', model_path
-
     def get_model_parameters(self):
-        with self.sess.as_default():
-            return {
-                'weights': self.weights.eval(),
-                'vbias': self.vbias.eval(),
-                'hbias': self.hbias.eval()
-            }
+        return {
+            'weights': self.weights.eval(),
+            'vbias': self.vbias.eval(),
+            'hbias': self.hbias.eval()
+        }
 
-    def sample_from_rbm(self, num_examples, num_steps, init=None):
-        num_steps_holder = tf.placeholder(tf.int32, ())
-        vis = tf.placeholder(tf.float32, [num_examples] + self.vis_shape)
-
+    def sample_from_rbm(self, num_steps, num_exmaples, vis):
         def cond(x, vis_p, vis_samples):
-            return tf.less(x, num_steps_holder)
+            return tf.less(x, num_steps)
 
         def body(x, vis_p, vis_samples):
             vis_p, vis_samples = self.vhv(vis_samples)
             return x+1, vis_p, vis_samples
 
-        if init is None:
-            init = np.random.normal(0, 1, [num_examples] + self.vis_shape)
-
-        with self.sess.as_default():
-            _, prob_imgs, sampled_imgs = self.sess.run(
-                tf.while_loop(cond, body, [0, vis, vis], back_prop=False),
-                feed_dict={num_steps_holder: num_steps, vis: init})
+        _, prob_imgs, sampled_imgs = tf.while_loop(cond, body, [0, vis, vis], back_prop=False)
         return prob_imgs, sampled_imgs
 
 
-def vis_weights(weights, rows, cols, neuron_shape, output_name=None):
-    assert weights.shape[-1] == rows * cols
-    f, axarr = plt.subplots(rows, cols)
-    for r in range(rows):
-        for c in range(cols):
-            neuron_idx = r * cols + c
-            weight_map = weights[:, neuron_idx].reshape(neuron_shape)
-            axarr[r][c].imshow(weight_map, cmap='Greys')
-            axarr[r][c].set_axis_off()
-    f.subplots_adjust(hspace=0.2, wspace=0.2)
-    if output_name is None:
-        plt.show()
-    else:
-        plt.savefig(output_name)
-
 if __name__ == '__main__':
-    (train_xs, _), _, _ = cPickle.load(file('mnist.pkl', 'rb'))
+    if len(sys.argv) < 3 or len(sys.argv) > 4:
+        print 'usage: python rbm.py pcd/cd cd-k [output_dir]'
+        sys.exit()
+    else:
+        use_pcd = (sys.argv[1] == 'pcd')
+        cd_k = int(sys.argv[2])
+        output_dir = None if len(sys.argv) == 3 else sys.argv[3]
 
-    batch_size =  20
-    # crbm(self, input_shape, filter_shape, strides, padding, name, params):
-    # params = cPickle.load(open('tf_crbm_init.pkl', 'rb'))
-    rbm = CRBM((28, 28, 1), (5, 5, 1, 200), (2, 2), 'VALID', 'crbm-test', {})
-    # rbm.train(train_xs, 0.001, 40, batch_size, True, 1, None)
-    rbm.train(train_xs, 0.001, 40, batch_size, False, 1, 'crbm-test')
+    (train_xs, _), _, _ = cPickle.load(file('mnist.pkl', 'rb'))
+    train_xs = train_xs.reshape((-1, 28, 28, 1))
+    batch_size = 20
+    lr = 0.001 # if use_pcd else 0.1
+    rbm = CRBM((28, 28, 1), (5, 5, 1, 200), (2, 2), 'SAME', output_dir, {})
+    train_rbm.train(rbm, train_xs, lr, 40, batch_size, use_pcd, cd_k, output_dir)

@@ -93,7 +93,8 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
                 gen_samples = rbm.sample_from_rbm(num_steps, num_samples, init)
                 prob_imgs, sampled_imgs = sess.run(gen_samples)
                 img_path = os.path.join(output_dir, 'epoch%d-plot.png' % i)    
-                utils.vis_weights(prob_imgs.T, 10, 10, (28, 28), img_path)
+                imgs = prob_imgs.reshape(num_samples, -1)
+                utils.vis_weights(imgs.T, 10, 10, (28, 28), img_path)
 
 
 # if __name__ == '__main__':
