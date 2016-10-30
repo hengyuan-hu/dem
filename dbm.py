@@ -3,7 +3,7 @@ import cPickle
 import os, sys
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from autograd_rbm import *
+from rbm import *
 
 
 class DBM(object):

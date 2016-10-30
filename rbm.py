@@ -1,34 +1,30 @@
 import numpy as np
 import cPickle
-import os
-import time
+import os, sys
 import tensorflow as tf
-import matplotlib.pyplot as plt
 
-
-def get_session():
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    return tf.Session(config=config)
+import train_rbm
 
 
 class RBM(object):
     def __init__(self, num_vis, num_hid, name):
         self.num_vis = num_vis
         self.num_hid = num_hid
-        self.name = name
+        self.name = name if name else 'rbm'
+        self.input_dim = [self.num_vis]
 
-        with tf.variable_scope(name):
+        with tf.variable_scope(self.name):
             self.weights = tf.get_variable(
                 'weights', shape=[self.num_vis, self.num_hid],
                 initializer=tf.random_normal_initializer(0, 0.01))
             self.vbias = tf.get_variable(
-                'vbias', shape=[self.num_vis],
+                'vbias', shape=[1, self.num_vis],
                 initializer=tf.constant_initializer(0.0))
             self.hbias = tf.get_variable(
-                'hbias', shape=[self.num_hid],
+                'hbias', shape=[1, self.num_hid],
                 initializer=tf.constant_initializer(0.0))
-        self.sess = get_session()
+
+        self.params = [self.weights, self.vbias, self.hbias]
 
     def compute_up(self, vis):
         hid_p = tf.nn.sigmoid(tf.matmul(vis, self.weights) + self.hbias)
@@ -43,6 +39,20 @@ class RBM(object):
         samples = tf.to_float(rand_uniform < ps)
         return samples
 
+    def free_energy(self, vis_samples):
+        """Compute the free energy defined on visibles.
+
+        return: free energy of shape: [batch_size, 1]
+        """
+        vbias_term = tf.matmul(vis_samples, self.vbias, transpose_b=True)
+        pre_sigmoid_hid_p = tf.matmul(vis_samples, self.weights) + self.hbias
+        pre_log_term = 1 + tf.exp(pre_sigmoid_hid_p)
+        log_term = tf.log(pre_log_term)
+        sum_log = tf.reduce_sum(log_term, reduction_indices=1, keep_dims=True)
+        assert  (-vbias_term - sum_log).get_shape().as_list() \
+            == (vis_samples.get_shape().as_list()[:1] + [1])
+        return -vbias_term - sum_log
+
     def vhv(self, vis_samples):
         hid_samples = self.sample(self.compute_up(vis_samples))
         vis_p = self.compute_down(hid_samples)
@@ -50,6 +60,10 @@ class RBM(object):
         return vis_p, vis_samples
         
     def cd(self, vis, k):
+        """Contrastive Divergence.
+
+        params: vis is treated as vis_samples.
+        """
         def cond(x, vis_p, vis_samples):
             return tf.less(x, k)
 
@@ -61,174 +75,57 @@ class RBM(object):
                                               back_prop=False)
         return vis_p, vis_samples
 
-    def pcd(self, persistent_hid):
-        vis_p = self.compute_down(persistent_hid)
-        vis_samples = self.sample(vis_p)
-        new_hid_p = self.compute_up(vis_samples)
-        new_hid_samples = self.sample(new_hid_p)
-        return vis_samples, new_hid_p, persistent_hid.assign(new_hid_samples)
-
-    def collect_stats(self, vis, hid, batch_size):
-        stats_w = tf.matmul(tf.transpose(vis), hid) / batch_size
-        stats_vbias = tf.reduce_mean(vis, 0)
-        stats_hbias = tf.reduce_mean(hid, 0)
-        return stats_w, stats_vbias, stats_hbias
-
-    def compute_gradient(self, vis, batch_size, use_pcd, cd_k, persistent_hid):
-        hid_p = self.compute_up(vis)
-        pos_stats_w, pos_stats_vbias, pos_stats_hbias = self.collect_stats(
-            vis, hid_p, batch_size)
-
-        if use_pcd:
-            assert persistent_hid is not None
-            recon_vis_samples, recon_hid_p, pcd_update = self.pcd(persistent_hid)
+    def get_loss_updates(self, lr, vis, persistent_vis, cd_k):
+        if persistent_vis is not None:
+            recon_vis_p, recon_vis_samples = self.cd(persistent_vis, cd_k)
         else:
-            assert cd_k is not None
             recon_vis_p, recon_vis_samples = self.cd(vis, cd_k)
-            recon_hid_p = self.compute_up(recon_vis_samples)
-            pcd_update = None
 
-        neg_stats_w, neg_stats_vbias, neg_stats_hbias = self.collect_stats(
-            recon_vis_samples, recon_hid_p, batch_size)
+        # use two reduce mean because vis and pst_chain could have different batch_size
+        cost = (tf.reduce_mean(self.free_energy(vis))
+                - tf.reduce_mean(self.free_energy(recon_vis_samples)))
 
-        dw = pos_stats_w - neg_stats_w
-        dvbias = pos_stats_vbias - neg_stats_vbias
-        dhbias = pos_stats_hbias - neg_stats_hbias
-        return dw, dvbias, dhbias, pcd_update
+        loss = self.l2_loss_function(vis)
+        return loss, cost, recon_vis_samples
 
-    def l2_loss_function(self, vis, batch_size):
+    def l2_loss_function(self, vis):
         recon_vis_p, _ = self.vhv(vis)
-        return tf.reduce_sum(tf.square(vis - recon_vis_p)) / batch_size
-
-    def train_step(self, vis, lr, batch_size, use_pcd, cd_k):
-        if use_pcd:
-            assert cd_k is None
-            persistent_hid = tf.get_variable(
-                'persistent_hid', shape=[batch_size, self.num_hid],
-                initializer=tf.random_uniform_initializer(0, 1))
-        else:
-            persistent_hid = None
-
-        dw, dvbias, dhbias, pcd_update = self.compute_gradient(
-            vis, batch_size, use_pcd, cd_k, persistent_hid)
-        loss = self.l2_loss_function(vis, batch_size)
-        # tf.scalar_summary('squared loss', loss)
-        if use_pcd:
-            assert pcd_update is not None
-            updates = tf.group(self.weights.assign_add(lr * dw),
-                               self.vbias.assign_add(lr * dvbias),
-                               self.hbias.assign_add(lr * dhbias),
-                               pcd_update)
-        else:
-            assert pcd_update is None
-            updates = tf.group(self.weights.assign_add(lr * dw),
-                               self.vbias.assign_add(lr * dvbias),
-                               self.hbias.assign_add(lr * dhbias))
-        return loss, updates
-
-
-    def train(self, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
-        ph_vis = tf.placeholder(tf.float32, (batch_size,) + train_xs.shape[1:], name='vis_input')
-        ph_lr = tf.placeholder(tf.float32, (), name='lr')
-
-        # batch_size = tf.Variable(np.float32(batch_size))
-        cd_k = None if use_pcd else tf.Variable(cd_k)
-
-        loss, updates = self.train_step(ph_vis, ph_lr, batch_size, use_pcd, cd_k)
-
-        num_batches = len(train_xs) / batch_size
-        assert num_batches * batch_size == len(train_xs)
-        with self.sess.as_default():
-            # merged = tf.merge_all_summaries()
-            train_writer = tf.train.SummaryWriter('./train', self.sess.graph)
-            tf.initialize_all_variables().run()
-
-            for i in range(num_epoch):
-                # np.random.shuffle(train_xs)
-                t = time.time()
-                loss_vals = np.zeros(num_batches)
-                for b in range(num_batches):
-                    batch_xs = train_xs[b * batch_size:(b+1) * batch_size]
-                    loss_val, _ = self.sess.run(
-                        [loss, updates],
-                        feed_dict={ph_vis: batch_xs,
-                                   ph_lr: lr})
-                    # train_writer.add_summary(summary, i)
-                    loss_vals[b] = loss_val
-                print 'Train Loss:', loss_vals.mean()
-                print 'Time took:', time.time() - t
-
-                if output_dir is not None:
-                    if not os.path.exists(output_dir):
-                        os.makedirs(output_dir)
-                    saver = tf.train.Saver()
-                    save_path = saver.save(
-                        self.sess,
-                        os.path.join(output_dir, '%s-epoch%d.ckpt' % (self.name, i)))
-                    print 'Model saved to:', save_path
-                    prob_imgs, _ = self.sample_from_rbm(100, 1000)
-                    img_path = os.path.join(output_dir, 'epoch%d-plot.png' % i)
-                    vis_weights(prob_imgs.T, 10, 10, (28, 28), img_path)
-                    params = self.get_model_parameters()
-                    params_vis_path = os.path.join(output_dir, 'epoch%d-filters.png' % i)
-                    vis_weights(params['weights'][:,:100], 10, 10, (28, 28), params_vis_path)
-
-    def load_model(self, model_path):
-        with self.sess.as_default():
-            tf.initialize_all_variables().run()
-            saver = tf.train.Saver()
-            saver.restore(self.sess, model_path)
-        print 'Model loaded from:', model_path
+        num_dims = len(vis.get_shape().as_list())
+        dims = range(num_dims)
+        total_loss = tf.reduce_sum(tf.square(vis - recon_vis_p), dims[1:])
+        return tf.reduce_mean(total_loss)
 
     def get_model_parameters(self):
-        with self.sess.as_default():
-            return {
-                'weights': self.weights.eval(),
-                'vbias': self.vbias.eval(),
-                'hbias': self.hbias.eval()
-            }
+        return {
+            'weights': self.weights,
+            'vbias': self.vbias,
+            'hbias': self.hbias
+        }
 
-    def sample_from_rbm(self, num_examples, num_steps, init=None):
-        num_steps_holder = tf.placeholder(tf.int32, ())
-        vis = tf.placeholder(tf.float32, (num_examples, self.num_vis))
-
+    def sample_from_rbm(self, num_steps, num_examples, vis):
         def cond(x, vis_p, vis_samples):
-            return tf.less(x, num_steps_holder)
+            return tf.less(x, num_steps)
 
         def body(x, vis_p, vis_samples):
             vis_p, vis_samples = self.vhv(vis_samples)
             return x+1, vis_p, vis_samples
 
-        if init is None:
-            init = np.random.normal(0, 1, (num_examples, self.num_vis))
-
-        with self.sess.as_default():
-            _, prob_imgs, sampled_imgs = self.sess.run(
-                tf.while_loop(cond, body, [0, vis, vis], back_prop=False),
-                feed_dict={num_steps_holder: num_steps, vis: init})
+        _, prob_imgs, sampled_imgs = tf.while_loop(cond, body, [0, vis, vis], back_prop=False)
         return prob_imgs, sampled_imgs
 
 
-def vis_weights(weights, rows, cols, neuron_shape, output_name=None):
-    assert weights.shape[-1] == rows * cols
-    f, axarr = plt.subplots(rows, cols)
-    for r in range(rows):
-        for c in range(cols):
-            neuron_idx = r * cols + c
-            weight_map = weights[:, neuron_idx].reshape(neuron_shape)
-            axarr[r][c].imshow(weight_map, cmap='Greys')
-            axarr[r][c].set_axis_off()
-    f.subplots_adjust(hspace=0.2, wspace=0.2)
-    if output_name is None:
-        plt.show()
-    else:
-        plt.savefig(output_name)
-
 if __name__ == '__main__':
-    (train_xs, _), _, _ = cPickle.load(file('mnist.pkl', 'rb'))
+    if len(sys.argv) < 3 or len(sys.argv) > 4:
+        print 'usage: python rbm.py pcd/cd cd-k [output_dir]'
+        sys.exit()
+    else:
+        use_pcd = (sys.argv[1] == 'pcd')
+        cd_k = int(sys.argv[2])
+        output_dir = None if len(sys.argv) == 3 else sys.argv[3]
 
+    (train_xs, _), _, _ = cPickle.load(file('mnist.pkl', 'rb'))
     batch_size = 20
-    rbm = RBM(784, 500, 'new-pcd')
-    # rbm.load_model('./rbm.ckpt')
-    rbm.train(train_xs, 0.001, 40, batch_size, True, None, rbm.name)
-    # rbm.train(train_xs, 0.1, 40, batch_size, False, 10, rbm.name)
+    lr = 0.001 if use_pcd else 0.1
+    rbm = RBM(784, 500, output_dir)
+
+    train_rbm.train(rbm, train_xs, lr, 40, batch_size, use_pcd, cd_k, output_dir)
