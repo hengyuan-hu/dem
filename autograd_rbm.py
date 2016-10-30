@@ -1,13 +1,13 @@
 import numpy as np
 import cPickle
-import os
-import time
+import os, sys
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
+import train_rbm
+
 
 def get_session():
-    # config = tf.ConfigProto(log_device_placement=True)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     log_device_placement=True
@@ -18,9 +18,9 @@ class RBM(object):
     def __init__(self, num_vis, num_hid, name):
         self.num_vis = num_vis
         self.num_hid = num_hid
-        self.name = name
+        self.name = name if name else 'rbm'
 
-        with tf.variable_scope(name):
+        with tf.variable_scope(self.name):
             self.weights = tf.get_variable(
                 'weights', shape=[self.num_vis, self.num_hid],
                 initializer=tf.random_normal_initializer(0, 0.01))
@@ -40,7 +40,7 @@ class RBM(object):
     def compute_down(self, hid):
         vis_p = tf.nn.sigmoid(tf.matmul(hid, tf.transpose(self.weights)) + self.vbias)
         return vis_p
-    
+
     def sample(self, ps):
         rand_uniform = tf.random_uniform(ps.get_shape().as_list(), 0, 1)
         samples = tf.to_float(rand_uniform < ps)
@@ -48,6 +48,7 @@ class RBM(object):
 
     def free_energy(self, vis_samples):
         """Compute the free energy defined on visibles.
+
         return: free energy of shape: [batch_size, 1]
         """
         vbias_term = tf.matmul(vis_samples, self.vbias, transpose_b=True)
@@ -67,6 +68,7 @@ class RBM(object):
         
     def cd(self, vis, k):
         """Contrastive Divergence.
+
         params: vis is treated as vis_samples.
         """
         def cond(x, vis_p, vis_samples):
@@ -116,13 +118,6 @@ class RBM(object):
             return x+1, vis_p, vis_samples
 
         _, prob_imgs, sampled_imgs = tf.while_loop(cond, body, [0, vis, vis], back_prop=False)
-        
-        '''
-        with self.sess.as_default():
-            _, prob_imgs, sampled_imgs = self.sess.run(
-                tf.while_loop(cond, body, [0, vis, vis], back_prop=False),
-                feed_dict={num_steps_holder: num_steps, vis: init})
-        '''
         return prob_imgs, sampled_imgs
 
 
@@ -142,12 +137,17 @@ def vis_weights(weights, rows, cols, neuron_shape, output_name=None):
         plt.savefig(output_name)
 
 if __name__ == '__main__':
-    (train_xs, _), _, _ = cPickle.load(file('mnist.pkl', 'rb'))
+    if len(sys.argv) < 3 or len(sys.argv) > 4:
+        print 'usage: python rbm.py pcd/cd cd-k [output_dir]'
+        sys.exit()
+    else:
+        use_pcd = (sys.argv[1] == 'pcd')
+        cd_k = int(sys.argv[2])
+        output_dir = None if len(sys.argv) == 3 else sys.argv[3]
 
-    batch_size =  20
-    rbm = RBM(784, 500, 'test')
-    # rbm.load_model('./rbm.ckpt')
-    # rbm.train(train_xs, 0.001, 5, batch_size, True, None, '.')
-    # train(self, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
-    # rbm.train(train_xs, 0.1, 40, batch_size, False, 1, None)
-    rbm.train(train_xs, 0.001, 40, batch_size, True, 1, None)
+    (train_xs, _), _, _ = cPickle.load(file('mnist.pkl', 'rb'))
+    batch_size = 20
+    lr = 0.001 if use_pcd else 0.1
+    rbm = RBM(784, 500, output_dir)
+
+    train_rbm.train(rbm, train_xs, lr, 40, batch_size, use_pcd, cd_k, output_dir)
