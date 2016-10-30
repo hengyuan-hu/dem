@@ -3,16 +3,14 @@ import cPickle
 import os, sys
 import tensorflow as tf
 
-import train_rbm
-
 
 class RBM(object):
     def __init__(self, num_vis, num_hid, name):
         self.num_vis = num_vis
         self.num_hid = num_hid
         self.name = name if name else 'rbm'
-        self.input_dim = [self.num_vis]
-        self.output_dim = [self.num_hid]
+        self.vis_shape = [self.num_vis]
+        self.hid_shape = [self.num_hid]
 
         with tf.variable_scope(self.name):
             self.weights = tf.get_variable(
@@ -114,6 +112,8 @@ class RBM(object):
 
 
 if __name__ == '__main__':
+    import train_rbm
+
     if len(sys.argv) < 3 or len(sys.argv) > 4:
         print 'usage: python rbm.py pcd/cd cd-k [output_dir]'
         sys.exit()

@@ -33,10 +33,9 @@ class DBM(object):
             rbm = self.rbm_list[i]
             vis_samples = rbm.sample(rbm.compute_up(vis_samples))
             if (i + 1 < self.num_rbm and
-                vis_samples.get_shape().as_list()[1:] != self.rbm_list[i+1].input_dim):
+                vis_samples.get_shape().as_list()[1:] != self.rbm_list[i+1].vis_shape):
                 assert i == self.last_conv
-                vis_samples = tf.reshape(vis_samples,
-                                         [-1] + self.rbm_list[i+1].input_dim)
+                vis_samples = tf.reshape(vis_samples, [-1] + self.rbm_list[i+1].vis_shape)
             vis_samples = tf.stop_gradient(vis_samples)
             samples_list.append(vis_samples)
         return samples_list
@@ -46,9 +45,9 @@ class DBM(object):
         k = self.num_rbm
         for i in range(self.num_rbm-1, -1, -1):
             rbm = self.rbm_list[i]
-            if hid_samples.get_shape().as_list()[1:] != rbm.output_dim:
+            if hid_samples.get_shape().as_list()[1:] != rbm.hid_shape:
                 assert i == self.last_conv
-                hid_samples = tf.reshape(hid_samples, [-1] + rbm.output_dim)
+                hid_samples = tf.reshape(hid_samples, [-1] + rbm.hid_shape)
             hid_samples = rbm.sample(rbm.compute_down(hid_samples))
             hid_samples = tf.stop_gradient(hid_samples)
             samples_list.append(hid_samples)
@@ -102,8 +101,8 @@ class DBM(object):
 
         Should ONLY be used for generating prob imgs for loss and plot purpose!
         """
-        if samples.get_shape().as_list()[1:] != rbm.output_dim:
-            samples = tf.reshape(samples, [-1] + rbm.output_dim)
+        if samples.get_shape().as_list()[1:] != rbm.hid_shape:
+            samples = tf.reshape(samples, [-1] + rbm.hid_shape)
         return rbm.compute_down(samples)
         
     def l2_loss(self, vis):
@@ -120,7 +119,6 @@ class DBM(object):
 
         def body(x, vis_p, vis_samples):
             recon_samples_list = self.vhv(vis_samples)
-            #TODO: too hacky
             vis_p = self._one_rbm_compute_down(self.rbm_list[0], recon_samples_list[1])
             vis_samples = recon_samples_list[0]
             return x+1, vis_p, vis_samples

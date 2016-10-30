@@ -2,33 +2,34 @@ import numpy as np
 import cPickle
 import os, sys
 import tensorflow as tf
-import train_rbm
+import utils
 
 
 class CRBM(object):
-    def __init__(self, input_shape, filter_shape, strides, padding, name, params):
+    def __init__(self, vis_shape, filter_shape, strides, padding, name, params):
         """Initialize a convolutional rbm.
 
-        input_shape: 3D shape of [in_height, in_width, in_channel]
+        vis_shape: 3D shape of [in_height, in_width, in_channel]
         filter_shape: 4D shape of [filter_height, filter_width, in_channels, out_channels]
         strides: 2D shape of [stride_height, stride_width]
         padding: a string from 'SAME', 'VALID', same as tf.nn.conv2d
         name: defines the name and variable scope of this crbm
         params: a dict of numpy array indicating the initial value of crbm
         """
-        assert len(input_shape) == 3
+        assert len(vis_shape) == 3
         assert len(filter_shape) == 4
         assert len(strides) == 2
         assert padding == 'SAME' or padding == 'VALID'
 
-        self.vis_shape = list(input_shape)
-        self.input_dim = self.vis_shape
+        self.vis_shape = list(vis_shape)
         self.filter_shape = list(filter_shape)
-        self.vbias_shape = list(input_shape[-1:])
+        self.vbias_shape = list(vis_shape[-1:])
         self.hbias_shape = list(filter_shape[-1:])
         self.strides = [1, strides[0], strides[1], 1]
         self.padding = padding
         self.name = name if name else 'crbm'
+        self.hid_shape = utils.conv_output_shape(
+            self.vis_shape, self.filter_shape, strides, self.padding)
 
         weights_init, vbias_init, hbias_init = self._get_initializers(params)
         with tf.variable_scope(self.name):
@@ -69,7 +70,6 @@ class CRBM(object):
         conv = tf.nn.bias_add(conv, self.hbias)
         print 'conv_shape:', conv.get_shape().as_list()
         hid_p = tf.nn.sigmoid(conv)
-        self.output_dim = hid_p.get_shape().as_list()[1:]
         return hid_p
 
     def compute_down(self, hid):
@@ -169,6 +169,8 @@ class CRBM(object):
 
 
 if __name__ == '__main__':
+    import train_rbm
+
     if len(sys.argv) < 3 or len(sys.argv) > 4:
         print 'usage: python rbm.py pcd/cd cd-k [output_dir]'
         sys.exit()

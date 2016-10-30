@@ -88,7 +88,7 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
                 # Generate samples
                 num_samples = 100
                 num_steps = 1000
-                init_shape = tuple([num_samples] + rbm.input_dim)
+                init_shape = tuple([num_samples] + rbm.vis_shape)
                 init = np.random.normal(0, 1, init_shape).astype(np.float32)
                 gen_samples = rbm.sample_from_rbm(num_steps, num_samples, init)
                 prob_imgs, sampled_imgs = sess.run(gen_samples)
