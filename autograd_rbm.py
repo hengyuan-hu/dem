@@ -2,16 +2,8 @@ import numpy as np
 import cPickle
 import os, sys
 import tensorflow as tf
-import matplotlib.pyplot as plt
 
 import train_rbm
-
-
-def get_session():
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    log_device_placement=True
-    return tf.Session(config=config)
 
 
 class RBM(object):
@@ -120,21 +112,6 @@ class RBM(object):
         _, prob_imgs, sampled_imgs = tf.while_loop(cond, body, [0, vis, vis], back_prop=False)
         return prob_imgs, sampled_imgs
 
-
-def vis_weights(weights, rows, cols, neuron_shape, output_name=None):
-    assert weights.shape[-1] == rows * cols
-    f, axarr = plt.subplots(rows, cols)
-    for r in range(rows):
-        for c in range(cols):
-            neuron_idx = r * cols + c
-            weight_map = weights[:, neuron_idx].reshape(neuron_shape)
-            axarr[r][c].imshow(weight_map, cmap='Greys')
-            axarr[r][c].set_axis_off()
-    f.subplots_adjust(hspace=0.2, wspace=0.2)
-    if output_name is None:
-        plt.show()
-    else:
-        plt.savefig(output_name)
 
 if __name__ == '__main__':
     if len(sys.argv) < 3 or len(sys.argv) > 4:
