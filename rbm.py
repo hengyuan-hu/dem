@@ -24,8 +24,6 @@ class RBM(object):
                 'hbias', shape=[1, self.num_hid],
                 initializer=tf.constant_initializer(0.0))
 
-        self.params = [self.weights, self.vbias, self.hbias]
-
     def compute_up(self, vis):
         hid_p = tf.nn.sigmoid(tf.matmul(vis, self.weights) + self.hbias)
         return hid_p
