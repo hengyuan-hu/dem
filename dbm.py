@@ -154,8 +154,8 @@ if __name__ == '__main__':
     batch_size = 20
     lr = 0.001 if use_pcd else 0.1
 
-    # dbm = DBM([784, 500, 500, 1000])
-    dbm = DBM([28, 28, 1]) # [784, 500, 500, 1000])
+    # dbm = DBM([784])
+    dbm = DBM([28, 28, 1])
     dbm.add_conv_layer((5, 5, 1, 64), (2, 2), 'SAME', 'conv1')
     dbm.add_conv_layer((5, 5, 64, 64), (2, 2), 'SAME', 'conv2')
     dbm.add_fc_layer(500, 'fc1')

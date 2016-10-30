@@ -8,19 +8,6 @@ import matplotlib.pyplot as plt
 import dbm as dbm_class
 import utils
 
-FLAGS = tf.app.flags.FLAGS
-
-# tf.app.flags.DEFINE_string('data_path', 'mnist.pkl',
-#                            """Directory where to write event logs."""
-#                            """and checkpoint.""")
-# tf.app.flags.DEFINE_string('out_dir', None,
-#                            """Directory where to write event logs."""
-#                            """and checkpoint.""")
-# tf.app.flags.DEFINE_boolean('use_pcd', True,
-#                             """Whether to log device placement.""")
-# tf.app.flags.DEFINE_float('lr', 0.001,
-#                             """Whether to log device placement.""")
-
 
 def load_model(sess, model_path):
     tf.initialize_all_variables().run()
@@ -95,10 +82,3 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
                 img_path = os.path.join(output_dir, 'epoch%d-plot.png' % i)    
                 imgs = prob_imgs.reshape(num_samples, -1)
                 utils.vis_weights(imgs.T, 10, 10, (28, 28), img_path)
-
-
-# if __name__ == '__main__':
-#     (train_xs, _), _, _ = cPickle.load(file(FLAGS.data_path, 'rb'))
-#     batch_size =  20
-#     dbm = dbm_class.Stacked_RBM([784, 500])
-#     train(dbm, train_xs, FLAGS.lr, 40, batch_size, FLAGS.use_pcd, 1, FLAGS.out_dir)
