@@ -12,6 +12,7 @@ class RBM(object):
         self.num_hid = num_hid
         self.name = name if name else 'rbm'
         self.input_dim = [self.num_vis]
+        self.output_dim = [self.num_hid]
 
         with tf.variable_scope(self.name):
             self.weights = tf.get_variable(

@@ -3,16 +3,28 @@ import cPickle
 import os, sys
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from rbm import *
+from rbm import RBM
+from crbm import CRBM
 
 
 class DBM(object):
-    def __init__(self, dim_list, name='srbm'):
-        self.num_rbm = len(dim_list) - 1
-        self.rbm_list = []
-        for i in range(self.num_rbm):
-            self.rbm_list.append(RBM(dim_list[i], dim_list[i+1], 'rbm_%d' % i))
-        self.input_dim = dim_list[:1]
+    def __init__(self, dim_list, name='dbm'):
+        # self.num_rbm = len(dim_list) - 1
+        # self.num_rbm = 0
+
+        self.rbm_list = [
+            CRBM((28, 28, 1), (5, 5, 1, 64), (2, 2), 'SAME', 'conv1', {}),
+            CRBM((14, 14, 64), (5, 5, 64, 64), (2, 2), 'SAME', 'conv2', {}),
+            RBM(3136, 500, 'fc1'),
+        ]
+        self.last_conv = 1
+
+        # for i in range(len(dim_list) - 1):
+        #     self.rbm_list.append(RBM(dim_list[i], dim_list[i+1], 'rbm_%d' % i))
+
+        self.num_rbm = len(self.rbm_list)
+        self.input_dim = [28, 28, 1]
+        # dim_list[:1]
     
     def compute_up(self, vis_samples):
         """Returns last hidden sample and samples list."""
@@ -20,6 +32,11 @@ class DBM(object):
         for i in range(self.num_rbm):
             rbm = self.rbm_list[i]
             vis_samples = rbm.sample(rbm.compute_up(vis_samples))
+            if (i + 1 < self.num_rbm and
+                vis_samples.get_shape().as_list()[1:] != self.rbm_list[i+1].input_dim):
+                assert i == self.last_conv
+                vis_samples = tf.reshape(vis_samples,
+                                         [-1] + self.rbm_list[i+1].input_dim)
             vis_samples = tf.stop_gradient(vis_samples)
             samples_list.append(vis_samples)
         return samples_list
@@ -29,6 +46,9 @@ class DBM(object):
         k = self.num_rbm
         for i in range(self.num_rbm-1, -1, -1):
             rbm = self.rbm_list[i]
+            if hid_samples.get_shape().as_list()[1:] != rbm.output_dim:
+                assert i == self.last_conv
+                hid_samples = tf.reshape(hid_samples, [-1] + rbm.output_dim)
             hid_samples = rbm.sample(rbm.compute_down(hid_samples))
             hid_samples = tf.stop_gradient(hid_samples)
             samples_list.append(hid_samples)
@@ -76,10 +96,19 @@ class DBM(object):
         
         loss = self.l2_loss(vis)
         return loss, cost, recon_samples_list[0]
+
+    def _one_rbm_compute_down(self, rbm, samples):
+        """One step compute down, return prob, no samples.
+
+        Should ONLY be used for generating prob imgs for loss and plot purpose!
+        """
+        if samples.get_shape().as_list()[1:] != rbm.output_dim:
+            samples = tf.reshape(samples, [-1] + rbm.output_dim)
+        return rbm.compute_down(samples)
         
     def l2_loss(self, vis):
         recon_samples_list = self.vhv(vis)
-        recon_vis_p = self.rbm_list[0].compute_down(recon_samples_list[1])
+        recon_vis_p = self._one_rbm_compute_down(self.rbm_list[0], recon_samples_list[1])
         num_dims = len(vis.get_shape().as_list())
         dims = range(num_dims)
         total_loss = tf.reduce_sum(tf.square(vis - recon_vis_p), dims[1:])
@@ -92,7 +121,7 @@ class DBM(object):
         def body(x, vis_p, vis_samples):
             recon_samples_list = self.vhv(vis_samples)
             #TODO: too hacky
-            vis_p = self.rbm_list[0].compute_down(recon_samples_list[1])
+            vis_p = self._one_rbm_compute_down(self.rbm_list[0], recon_samples_list[1])
             vis_samples = recon_samples_list[0]
             return x+1, vis_p, vis_samples
 
@@ -110,8 +139,10 @@ if __name__ == '__main__':
         output_dir = None if len(sys.argv) == 3 else sys.argv[3]
 
     (train_xs, _), _, _ = cPickle.load(file('mnist.pkl', 'rb'))
+    train_xs = train_xs.reshape((-1, 28, 28, 1))
     batch_size = 20
     lr = 0.001 if use_pcd else 0.1
-    dbm = DBM([784, 500, 500, 1000])
+    # dbm = DBM([784, 500, 500, 1000])
+    dbm = DBM([]) # [784, 500, 500, 1000])
 
     train_rbm.train(dbm, train_xs, lr, 40, batch_size, use_pcd, cd_k, output_dir)

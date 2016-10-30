@@ -69,6 +69,7 @@ class CRBM(object):
         conv = tf.nn.bias_add(conv, self.hbias)
         print 'conv_shape:', conv.get_shape().as_list()
         hid_p = tf.nn.sigmoid(conv)
+        self.output_dim = hid_p.get_shape().as_list()[1:]
         return hid_p
 
     def compute_down(self, hid):
@@ -92,7 +93,7 @@ class CRBM(object):
         return: free energy of shape: [batch_size, 1]
         """
         assert(len(vis_samples.get_shape().as_list()) == 4)
-        vbias_term = tf.reduce_sum(vis_samples, reduction_indices=[2,3]) * self.vbias
+        vbias_term = tf.reduce_sum(vis_samples, reduction_indices=[1, 2]) * self.vbias
         vbias_term = tf.reduce_sum(vbias_term, reduction_indices=[1])
 
         conv = tf.nn.conv2d(vis_samples, self.weights, self.strides, self.padding)
