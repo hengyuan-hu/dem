@@ -28,7 +28,8 @@ class DBM(object):
         self.rbm_list.append(rbm)
 
     def add_fc_layer(self, num_hid, name):
-        self.last_conv = self.num_rbm - 1
+        if self.last_conv is None:
+            self.last_conv = self.num_rbm - 1
 
         if self.num_rbm == 0:
             num_vis = int(np.prod(self.vis_shape))
