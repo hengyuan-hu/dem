@@ -43,7 +43,6 @@ class CRBM(object):
     def _get_initializers(self, params):
         if 'weights' in params:
             weights_init_val = params['weights']
-            print list(weights_init_val.shape), 'vs', self.filter_shape
             assert list(weights_init_val.shape) == self.filter_shape
             weights_initializer = tf.constant_initializer(weights_init_val)
         else:
@@ -68,7 +67,6 @@ class CRBM(object):
     def compute_up(self, vis):
         conv = tf.nn.conv2d(vis, self.weights, self.strides, self.padding)
         conv = tf.nn.bias_add(conv, self.hbias)
-        print 'conv_shape:', conv.get_shape().as_list()
         hid_p = tf.nn.sigmoid(conv)
         return hid_p
 
@@ -77,8 +75,6 @@ class CRBM(object):
         deconv = tf.nn.conv2d_transpose(hid, self.weights, output_shape,
                                         self.strides, self.padding)
         deconv = tf.nn.bias_add(deconv, self.vbias)
-        print 'deconv_shape:',  deconv.get_shape().as_list()
-        print 'original vis_shape', self.vis_shape
         vis_p = tf.nn.sigmoid(deconv)
         return vis_p
 

@@ -40,6 +40,13 @@ class DBM(object):
         self.num_rbm += 1
         self.rbm_list.append(rbm)
 
+    def print_network(self):
+        print '-----Network Dimensions-----'
+        for rbm in self.rbm_list:
+            print rbm.vis_shape
+        print self.rbm_list[-1].hid_shape
+        print '----------------------------'
+
     def compute_up(self, vis_samples):
         """Returns last hidden sample and samples list."""
         samples_list = [vis_samples]
@@ -160,5 +167,6 @@ if __name__ == '__main__':
     dbm.add_conv_layer((5, 5, 1, 64), (2, 2), 'SAME', 'conv1')
     dbm.add_conv_layer((5, 5, 64, 64), (2, 2), 'SAME', 'conv2')
     dbm.add_fc_layer(500, 'fc1')
+    dbm.print_network()
 
     train_rbm.train(dbm, train_xs, lr, 40, batch_size, use_pcd, cd_k, output_dir)
