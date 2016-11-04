@@ -42,8 +42,10 @@ class DBM(object):
 
     def print_network(self):
         print '-----Network Dimensions-----'
-        for rbm in self.rbm_list:
+        for i, rbm in enumerate(self.rbm_list):
             print rbm.vis_shape
+            if i == self.last_conv:
+                print rbm.hid_shape
         print self.rbm_list[-1].hid_shape
         print '----------------------------'
 
