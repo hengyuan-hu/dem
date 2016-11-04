@@ -14,6 +14,7 @@ class DBM(object):
         self.last_conv = None    # index of the final crbm layer
         self.num_rbm = 0
         self.rbm_list = []
+        self.name = name
 
     def add_conv_layer(self, filter_shape, stride, padding, name, params={}):
         assert self.last_conv is None, 'cannot add conv layer after fc layers'
@@ -75,13 +76,13 @@ class DBM(object):
             hid_samples = tf.stop_gradient(hid_samples)
             samples_list.append(hid_samples)
         return samples_list[::-1]
-        
+
     def vhv(self, vis_samples):
         vis_samples_list = self.compute_up(vis_samples)
         recon_samples_list = self.compute_down(vis_samples_list[-1])
         assert len(vis_samples_list) == len(recon_samples_list)
         return recon_samples_list
-    
+
     def cd(self, vis, k):
         """Contrastive Divergence.
 
@@ -101,10 +102,10 @@ class DBM(object):
             _, recon_samples_list = self.cd(persistent_vis, cd_k)
         else:
             vis_samples_list, recon_samples_list = self.cd(vis, cd_k)
-        
+
         energy_vis = tf.zeros([], tf.float32)
         energy_recon = tf.zeros([], tf.float32)
-        
+
         assert len(recon_samples_list) == self.num_rbm + 1
         for i in range(self.num_rbm):
             # no need to compare free energy of the last layer
@@ -115,7 +116,7 @@ class DBM(object):
             energy_recon += tf.reduce_mean(rbm.free_energy(recon_samples))
 
         cost = energy_vis - energy_recon
-        
+
         loss = self.l2_loss(vis)
         return loss, cost, recon_samples_list[0]
 
@@ -127,7 +128,7 @@ class DBM(object):
         if samples.get_shape().as_list()[1:] != rbm.hid_shape:
             samples = tf.reshape(samples, [-1] + rbm.hid_shape)
         return rbm.compute_down(samples)
-        
+
     def l2_loss(self, vis):
         recon_samples_list = self.vhv(vis)
         recon_vis_p = self._one_rbm_compute_down(self.rbm_list[0], recon_samples_list[1])
@@ -135,8 +136,8 @@ class DBM(object):
         dims = range(num_dims)
         total_loss = tf.reduce_sum(tf.square(vis - recon_vis_p), dims[1:])
         return tf.reduce_mean(total_loss)
-    
-    def sample_from_rbm(self, num_steps, num_examples, vis):
+
+    def sample_from_rbm(self, num_steps, vis):
         def cond(x, vis_p, vis_samples):
             return tf.less(x, num_steps)
 
@@ -148,7 +149,6 @@ class DBM(object):
 
         _, prob_imgs, sampled_imgs = tf.while_loop(cond, body, [0, vis, vis], back_prop=False)
         return prob_imgs, sampled_imgs
-
 
 if __name__ == '__main__':
     if len(sys.argv) < 3 or len(sys.argv) > 4:

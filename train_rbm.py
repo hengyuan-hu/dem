@@ -35,7 +35,7 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
     loss, cost, new_vis = rbm.get_loss_updates(ph_lr, ph_vis, persistent_vis_holder, cd_k)
     opt = tf.train.GradientDescentOptimizer(ph_lr)
     train_step = opt.minimize(cost)
-        
+
     # start a session
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -51,7 +51,7 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
             loss_vals = np.zeros(num_batches)
             for b in range(num_batches):
                 batch_xs = train_xs[b * batch_size:(b+1) * batch_size]
-                    
+
                 if use_pcd:
                     loss_vals[b], _, persistent_vis_value = sess.run(
                         [loss, train_step, new_vis],
@@ -61,7 +61,7 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
                 else:
                     loss_vals[b], _ = sess.run(
                             [loss,train_step], feed_dict={ph_vis: batch_xs, ph_lr: lr })
-                            
+
             print 'Train Loss:', loss_vals.mean()
             print '\tTime took:', time.time() - t
             if output_dir is not None:
@@ -77,8 +77,8 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
                 num_steps = 3000
                 init_shape = tuple([num_samples] + rbm.vis_shape)
                 init = np.random.normal(0, 1, init_shape).astype(np.float32)
-                gen_samples = rbm.sample_from_rbm(num_steps, num_samples, init)
+                gen_samples = rbm.sample_from_rbm(num_steps, init)
                 prob_imgs, sampled_imgs = sess.run(gen_samples)
-                img_path = os.path.join(output_dir, 'epoch%d-plot.png' % i)    
+                img_path = os.path.join(output_dir, 'epoch%d-plot.png' % i)
                 imgs = prob_imgs.reshape(num_samples, -1)
                 utils.vis_samples(imgs, 10, 10, (28, 28), img_path)
