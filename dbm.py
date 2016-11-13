@@ -3,8 +3,8 @@ import cPickle
 import os, sys
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from rbm import RBM
-from crbm import CRBM
+from rbm import RBM, GaussianRBM
+from crbm import CRBM, GaussianCRBM
 import train_rbm
 
 
@@ -14,8 +14,10 @@ class DBM(object):
         self.last_conv = None    # index of the final crbm layer
         self.num_rbm = 0
         self.rbm_list = []
+        self.name = name
 
-    def add_conv_layer(self, filter_shape, stride, padding, name, params={}):
+    def add_conv_layer(self, filter_shape, stride, padding, name,
+                       use_gaussian=False, params={}):
         assert self.last_conv is None, 'cannot add conv layer after fc layers'
 
         if self.num_rbm == 0:
@@ -23,11 +25,14 @@ class DBM(object):
         else:
             vis_shape = self.rbm_list[-1].hid_shape
 
-        rbm = CRBM(vis_shape, filter_shape, stride, padding, name, params)
+        if use_gaussian:
+            rbm = GaussianCRBM(vis_shape, filter_shape, stride, padding, name, params)
+        else:
+            rbm = CRBM(vis_shape, filter_shape, stride, padding, name, params)
         self.num_rbm += 1
         self.rbm_list.append(rbm)
 
-    def add_fc_layer(self, num_hid, name):
+    def add_fc_layer(self, num_hid, name, use_gaussian=False):
         if self.last_conv is None:
             self.last_conv = self.num_rbm - 1
 
@@ -36,7 +41,10 @@ class DBM(object):
         else:
             num_vis = int(np.prod(self.rbm_list[-1].hid_shape))
 
-        rbm = RBM(num_vis, num_hid, name)
+        if use_gaussian:
+            rbm = GaussianRBM(num_vis, num_hid, name)
+        else:
+            rbm = RBM(num_vis, num_hid, name)
         self.num_rbm += 1
         self.rbm_list.append(rbm)
 
@@ -71,7 +79,10 @@ class DBM(object):
             if hid_samples.get_shape().as_list()[1:] != rbm.hid_shape:
                 assert i == self.last_conv
                 hid_samples = tf.reshape(hid_samples, [-1] + rbm.hid_shape)
-            hid_samples = rbm.sample(rbm.compute_down(hid_samples))
+            if type(rbm) == GaussianRBM or type(rbm) == GaussianCRBM:
+                hid_samples = rbm.sample_gaussian(rbm.compute_down(hid_samples))
+            else:
+                hid_samples = rbm.sample(rbm.compute_down(hid_samples))
             hid_samples = tf.stop_gradient(hid_samples)
             samples_list.append(hid_samples)
         return samples_list[::-1]
