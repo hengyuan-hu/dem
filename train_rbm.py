@@ -16,7 +16,8 @@ def load_model(sess, model_path):
     print 'Model loaded from:', model_path
 
 
-def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
+def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir,
+          pcd_chain_size=None, img_mean=0, img_std=1):
     vis_shape = train_xs.shape[1:]    # shape of single image
     batch_shape = (batch_size,) + vis_shape
     num_batches = len(train_xs) / batch_size
@@ -26,8 +27,12 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
     ph_vis = tf.placeholder(tf.float32, batch_shape, name='vis_input')
     ph_lr = tf.placeholder(tf.float32, (), name='lr')
     if use_pcd:
-        persistent_vis_holder = tf.placeholder(tf.float32, batch_shape, name='pst_vis_holder')
-        persistent_vis_value = np.random.uniform(size=batch_shape).astype(np.float32)
+        if not pcd_chain_size:
+            pcd_chain_size = batch_size
+        pcd_chain_shape = (pcd_chain_size,) + vis_shape
+        persistent_vis_holder = tf.placeholder(
+            tf.float32, pcd_chain_size, name='pst_vis_holder')
+        persistent_vis_value = np.random.uniform(size=pcd_chain_shape).astype(np.float32)
     else:
         persistent_vis_holder = None
 
@@ -67,10 +72,10 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
             if output_dir is not None:
                 if not os.path.exists(output_dir):
                     os.makedirs(output_dir)
-                # saver = tf.train.Saver()
-                # save_path = saver.save(
-                #     sess, os.path.join(output_dir, '%s-epoch%d.ckpt' % (rbm.name, i)))
-                # print '\tModel saved to:', save_path
+                saver = tf.train.Saver()
+                save_path = saver.save(
+                    sess, os.path.join(output_dir, '%s-epoch%d.ckpt' % (rbm.name, i)))
+                print '\tModel saved to:', save_path
 
                 # Generate samples
                 num_samples = 100
@@ -79,6 +84,7 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir):
                 init = np.random.normal(0, 1, init_shape).astype(np.float32)
                 gen_samples = rbm.sample_from_rbm(num_steps, num_samples, init)
                 prob_imgs, sampled_imgs = sess.run(gen_samples)
-                img_path = os.path.join(output_dir, 'epoch%d-plot.png' % i)    
+                prob_imgs = prob_imgs * img_std + img_mean
+                img_path = os.path.join(output_dir, 'epoch%d-plot.png' % i)
                 imgs = prob_imgs.reshape(num_samples, -1)
                 utils.vis_samples(imgs, 10, 10, (28, 28), img_path)
