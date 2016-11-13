@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import tensorflow as tf
-
+import numpy as np
 
 def get_session():
     config = tf.ConfigProto()
@@ -59,3 +59,10 @@ def conv_output_shape(input_shape, filter_shape, strides, padding):
     out_width = conv_output_length(input_shape[1], filter_shape[1], strides[1], padding)
     return [out_height, out_width, filter_shape[3]]
 
+
+CIFAR10_COLOR_MEAN_RGB = np.array([125.3, 123.0, 113.9]).reshape(1, 1, 3)
+CIFAR10_COLOR_STD_RGB  = np.array([63.0,  62.1,  66.7]).reshape(1, 1, 3)
+
+def preprocess_cifar10(dataset):
+    dataset = (dataset - CIFAR10_COLOR_MEAN_RGB) / CIFAR10_COLOR_STD_RGB
+    return dataset, CIFAR10_COLOR_MEAN_RGB, CIFAR10_COLOR_STD_RGB
