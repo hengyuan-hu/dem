@@ -111,6 +111,40 @@ class RBM(object):
         return prob_imgs, sampled_imgs
 
 
+class GaussianRBM(RBM):
+    def compute_down(self, hid):
+        vis_mean = tf.matmul(hid, tf.transpose(self.weights)) + self.vbias
+        return vis_mean
+
+    def sample_gaussian(self, mean):
+        dist = tf.contrib.distributions.Normal(mu=mean, sigma=1.0)
+        samples = dist.sample((1,))[0]
+        return samples
+
+    def free_energy(self, vis_samples):
+        """Compute the free energy defined on visibles.
+
+        return: free energy of shape: [batch_size, 1]
+        """
+        vis_square_sum = 0.5 * tf.reduce_sum(tf.square(vis_samples),
+                                             reduction_indices=1, keep_dims=True)
+        vbias_term = tf.matmul(vis_samples, self.vbias, transpose_b=True)
+        pre_sigmoid_hid_p = tf.matmul(vis_samples, self.weights) + self.hbias
+        pre_log_term = 1 + tf.exp(pre_sigmoid_hid_p)
+        log_term = tf.log(pre_log_term)
+        sum_log = tf.reduce_sum(log_term, reduction_indices=1, keep_dims=True)
+        assert  (vbias_term - sum_log).get_shape().as_list() \
+            == (vis_samples.get_shape().as_list()[:1] + [1])
+        return -vbias_term - sum_log + vis_square_sum
+
+
+    def vhv(self, vis_samples):
+        hid_samples = self.sample(self.compute_up(vis_samples))
+        vis_mean = self.compute_down(hid_samples)
+        vis_samples = self.sample_gaussian(vis_mean)
+        return vis_mean, vis_samples
+
+
 if __name__ == '__main__':
     import train_rbm
 
