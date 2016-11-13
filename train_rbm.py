@@ -5,7 +5,6 @@ import time
 import tensorflow as tf
 import matplotlib
 import matplotlib.pyplot as plt
-import dbm as dbm_class
 import utils
 
 
@@ -31,7 +30,7 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir,
             pcd_chain_size = batch_size
         pcd_chain_shape = (pcd_chain_size,) + vis_shape
         persistent_vis_holder = tf.placeholder(
-            tf.float32, pcd_chain_size, name='pst_vis_holder')
+            tf.float32, pcd_chain_shape, name='pst_vis_holder')
         persistent_vis_value = np.random.uniform(size=pcd_chain_shape).astype(np.float32)
     else:
         persistent_vis_holder = None
@@ -56,7 +55,6 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir,
             loss_vals = np.zeros(num_batches)
             for b in range(num_batches):
                 batch_xs = train_xs[b * batch_size:(b+1) * batch_size]
-                    
                 if use_pcd:
                     loss_vals[b], _, persistent_vis_value = sess.run(
                         [loss, train_step, new_vis],
