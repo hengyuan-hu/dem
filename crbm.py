@@ -86,7 +86,7 @@ class CRBM(object):
     def free_energy(self, vis_samples):
         """Compute the free energy defined on visibles.
 
-        return: free energy of shape: [batch_size, 1]
+        return: free energy of shape: [batch_size]
         """
         assert(len(vis_samples.get_shape().as_list()) == 4)
         vbias_term = tf.reduce_sum(vis_samples, reduction_indices=[1, 2]) * self.vbias
@@ -162,6 +162,47 @@ class CRBM(object):
 
         _, prob_imgs, sampled_imgs = tf.while_loop(cond, body, [0, vis, vis], back_prop=False)
         return prob_imgs, sampled_imgs
+
+
+class GaussianCRBM(CRBM):
+    def compute_down(self, hid):
+        output_shape = hid.get_shape().as_list()[:1] + self.vis_shape
+        deconv = tf.nn.conv2d_transpose(hid, self.weights, output_shape,
+                                        self.strides, self.padding)
+        vis_mean = tf.nn.bias_add(deconv, self.vbias)
+        return vis_mean
+
+    def sample_gaussian(self, mean):
+        print 'sampling gaussian'
+        dist = tf.contrib.distributions.Normal(mu=mean, sigma=1.0)
+        samples = dist.sample((1,))[0]
+        return samples
+
+    def free_energy(self, vis_samples):
+        """Compute the free energy defined on visibles.
+
+        return: free energy of shape: [batch_size]
+        """
+        assert(len(vis_samples.get_shape().as_list()) == 4)
+        vis_square_sum = 0.5 * tf.reduce_sum(tf.square(vis_samples),
+                                             reduction_indices=[1, 2, 3])
+
+        vbias_term = tf.reduce_sum(vis_samples, reduction_indices=[1, 2]) * self.vbias
+        vbias_term = tf.reduce_sum(vbias_term, reduction_indices=[1])
+
+        conv = tf.nn.conv2d(vis_samples, self.weights, self.strides, self.padding)
+        pre_sigmoid_hid_p = tf.nn.bias_add(conv, self.hbias)
+        pre_log_term = 1 + tf.exp(pre_sigmoid_hid_p)
+        log_term = tf.log(pre_log_term)
+        sum_log = tf.reduce_sum(log_term, reduction_indices=[1,2,3])
+        assert sum_log.get_shape().as_list() == vbias_term.get_shape().as_list()
+        return -vbias_term - sum_log + vis_square_sum
+
+    def vhv(self, vis_samples):
+        hid_samples = self.sample(self.compute_up(vis_samples))
+        vis_mean = self.compute_down(hid_samples)
+        vis_samples = self.sample_gaussian(vis_mean)
+        return vis_mean, vis_samples
 
 
 if __name__ == '__main__':
