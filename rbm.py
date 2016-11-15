@@ -55,7 +55,7 @@ class RBM(object):
         vis_p = self.compute_down(hid_samples)
         vis_samples = self.sample(vis_p)
         return vis_p, vis_samples
-        
+
     def cd(self, vis, k):
         """Contrastive Divergence.
 
@@ -94,9 +94,9 @@ class RBM(object):
 
     def get_model_parameters(self):
         return {
-            'weights': self.weights,
-            'vbias': self.vbias,
-            'hbias': self.hbias
+            'weights': self.weights.eval(),
+            'vbias': self.vbias.eval(),
+            'hbias': self.hbias.eval()
         }
 
     def sample_from_rbm(self, num_steps, num_examples, vis):

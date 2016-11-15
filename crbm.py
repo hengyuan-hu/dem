@@ -105,7 +105,7 @@ class CRBM(object):
         vis_p = self.compute_down(hid_samples)
         vis_samples = self.sample(vis_p)
         return vis_p, vis_samples
-        
+
     def cd(self, vis, k):
         """Contrastive Divergence.
 
@@ -152,7 +152,7 @@ class CRBM(object):
             'hbias': self.hbias.eval()
         }
 
-    def sample_from_rbm(self, num_steps, num_exmaples, vis):
+    def sample_from_rbm(self, num_steps, vis):
         def cond(x, vis_p, vis_samples):
             return tf.less(x, num_steps)
 
