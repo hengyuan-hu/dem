@@ -76,13 +76,13 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir,
                 print '\tModel saved to:', save_path
 
                 # Generate samples
-                num_samples = 100
-                num_steps = 3000
-                init_shape = tuple([num_samples] + rbm.vis_shape)
-                init = np.random.normal(0, 1, init_shape).astype(np.float32)
-                gen_samples = rbm.sample_from_rbm(num_steps, init)
-                prob_imgs, sampled_imgs = sess.run(gen_samples)
-                prob_imgs = prob_imgs * img_std + img_mean
-                img_path = os.path.join(output_dir, 'epoch%d-plot.png' % i)
-                imgs = prob_imgs.reshape(num_samples, -1)
-                utils.vis_samples(imgs, 10, 10, (28, 28), img_path)
+                # num_samples = 100
+                # num_steps = 3000
+                # init_shape = tuple([num_samples] + rbm.vis_shape)
+                # init = np.random.normal(0, 1, init_shape).astype(np.float32)
+                # gen_samples = rbm.sample_from_rbm(num_steps, num_samples, init)
+                # prob_imgs, sampled_imgs = sess.run(gen_samples)
+                # prob_imgs = prob_imgs * img_std + img_mean
+                # img_path = os.path.join(output_dir, 'epoch%d-plot.png' % i)
+                # imgs = prob_imgs.reshape(num_samples, -1)
+                # utils.vis_samples(imgs, 10, 10, (28, 28), img_path)

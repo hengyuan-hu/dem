@@ -15,6 +15,9 @@ from keras.layers.normalization import BatchNormalization
 import tensorflow as tf
 from keras.utils.visualize_util import plot
 import os
+from keras import regularizers
+from keras.layers.noise import GaussianNoise
+import cPickle
 
 
 def basic_model(input_shape):
@@ -23,6 +26,20 @@ def basic_model(input_shape):
     decoded = Conv2D(3, 3, 3, activation='linear', border_mode='same')(encoded)
     autoencoder = Model(input_img, decoded)
     return autoencoder
+
+
+def load_encoder_decoder(input_shape, encoder_func,  encoder_name,
+                         decoder_func, decoder_name):
+    encoder = encoder_func(input_shape)
+    decoder = decoder_func(encoder.get_output_shape_at(-1)[1:])
+
+    _, encoder_weight_file = _get_model_files(encoder_name)
+    _, decoder_weight_file = _get_model_files(decoder_name)
+
+    encoder.load_weights(encoder_weight_file)
+    decoder.load_weights(decoder_weight_file)
+    print('Loaded model from disk')
+    return encoder, decoder
 
 
 def deep_encoder1(input_shape):
@@ -116,6 +133,7 @@ def deep_model1(input_shape):
 
     # decoder_input = Input(shape=encoded._keras_shape[1:])
     batch_size = tf.shape(encoded)[0]
+    encoded = GaussianNoise(0.1)(encoded)
 
     x = BatchNormalization(mode=2, axis=3)(encoded)
 
@@ -194,13 +212,15 @@ if __name__ == '__main__':
     opt = keras.optimizers.SGD(lr=0.1, momentum=0.9, decay=0.0, nesterov=True)
     auto.compile(optimizer=opt, loss='mse')
 
-    auto.fit(train_xs, train_xs,
-             nb_epoch=80,
-             batch_size=batch_size,
-             validation_data=(test_xs, test_xs),
-             shuffle=True)
+    history = auto.fit(train_xs, train_xs,
+                       nb_epoch=100,
+                       batch_size=batch_size,
+                       validation_data=(test_xs, test_xs),
+                       shuffle=True)
+    model_name = 'noise_deep_model1'
+    save_model(auto, model_name)
+    cPickle.dump(history.history, open(model_name+'_his.pkl', 'wb'))
 
-    save_model(auto, 'deep_model1')
     # current_dir = os.path.dirname(os.path.realpath(__file__))
     # model_path = os.path.join(current_dir, 'deep_model1.png')
     # plot(auto, to_file=model_path, show_shapes=True)
