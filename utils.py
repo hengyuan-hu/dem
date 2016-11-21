@@ -2,11 +2,26 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
 
+
 def get_session():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
-    log_device_placement=True
     return tf.Session(config=config)
+
+
+def sample_bernoulli(ps):
+    rand_uniform = tf.random_uniform(tf.shape(ps), 0, 1)
+    samples = tf.to_float(rand_uniform < ps)
+    return samples
+
+
+def scheduled_lr(base_lr, epoch, total_epoch):
+    if epoch < 0.5 * total_epoch:
+        return base_lr
+    elif epoch < 0.75 * total_epoch:
+        return base_lr * 0.1
+    else:
+        return base_lr * 0.01
 
 
 def vis_samples(imgs, rows, cols, img_shape, output_name):
