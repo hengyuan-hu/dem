@@ -8,8 +8,8 @@ from crbm import CRBM, GaussianCRBM
 import train_rbm
 
 
-class DBM(object):
-    def __init__(self, vis_shape, name='dbm'):
+class DRBN(object):
+    def __init__(self, vis_shape, name='drbn'):
         self.vis_shape = list(vis_shape)
         self.last_conv = None    # index of the final crbm layer
         self.num_rbm = 0
@@ -162,7 +162,7 @@ class DBM(object):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3 or len(sys.argv) > 4:
-        print 'usage: python dbm.py pcd/cd cd-k [output_dir]'
+        print 'usage: python drbn.py pcd/cd cd-k [output_dir]'
         sys.exit()
     else:
         use_pcd = (sys.argv[1] == 'pcd')
@@ -174,11 +174,11 @@ if __name__ == '__main__':
     batch_size = 20
     lr = 0.001 if use_pcd else 0.1
 
-    # dbm = DBM([784])
-    dbm = DBM([28, 28, 1])
-    dbm.add_conv_layer((5, 5, 1, 64), (2, 2), 'SAME', 'conv1')
-    dbm.add_conv_layer((5, 5, 64, 64), (2, 2), 'SAME', 'conv2')
-    dbm.add_fc_layer(500, 'fc1')
-    dbm.print_network()
+    # drbn = DRBN([784])
+    drbn = DRBN([28, 28, 1])
+    drbn.add_conv_layer((5, 5, 1, 64), (2, 2), 'SAME', 'conv1')
+    drbn.add_conv_layer((5, 5, 64, 64), (2, 2), 'SAME', 'conv2')
+    drbn.add_fc_layer(500, 'fc1')
+    drbn.print_network()
 
-    train_rbm.train(dbm, train_xs, lr, 40, batch_size, use_pcd, cd_k, output_dir)
+    train_rbm.train(drbn, train_xs, lr, 40, batch_size, use_pcd, cd_k, output_dir)

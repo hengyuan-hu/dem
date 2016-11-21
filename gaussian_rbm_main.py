@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from rbm import GaussianRBM, RBM
 from crbm import GaussianCRBM
 import train_rbm
-from dbm import DBM
+from drbn import DRBN
 from keras.datasets import cifar10
 import keras
 import utils
@@ -39,11 +39,11 @@ if __name__ == '__main__':
     train_xs = train_xs[:,:,:,:1]#.reshape(-1, 32*32)
     rbm = GaussianCRBM((32, 32, 1), (12, 12, 1, 256), (2, 2), 'VALID', output_dir, {})
     # rbm = GaussianRBM(32*32, 1000, output_dir)
-    # dbm = DBM([32*32], output_dir)
-    # dbm.add_fc_layer(500, 'fc1', use_gaussian=True)
-    # dbm.add_fc_layer(500, 'fc2')
-    # dbm.add_fc_layer(1000, 'fc3')
-    # dbm.print_network()
+    # drbn = DRBN([32*32], output_dir)
+    # drbn.add_fc_layer(500, 'fc1', use_gaussian=True)
+    # drbn.add_fc_layer(500, 'fc2')
+    # drbn.add_fc_layer(1000, 'fc3')
+    # drbn.print_network()
 
     train_rbm.train(rbm, train_xs, lr, 40, batch_size, use_pcd, cd_k, output_dir,
                     pcd_chain_size=pcd_chain_size)# , mean, std)

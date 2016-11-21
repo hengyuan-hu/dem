@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from rbm import RBM
 from crbm import CRBM
 import train_rbm
-from dbm import DBM
+from drbn import DRBN
 
 
 if __name__ == '__main__':
@@ -22,10 +22,10 @@ if __name__ == '__main__':
     batch_size = 20
     lr = 0.001 if use_pcd else 0.1
 
-    dbm = DBM([784])
-    dbm.add_fc_layer(500, 'fc1')
-    dbm.add_fc_layer(500, 'fc2')
-    dbm.add_fc_layer(1000, 'fc3')
-    dbm.print_network()
+    drbn = DRBN([784])
+    drbn.add_fc_layer(500, 'fc1')
+    drbn.add_fc_layer(500, 'fc2')
+    drbn.add_fc_layer(1000, 'fc3')
+    drbn.print_network()
 
-    train_rbm.train(dbm, train_xs, lr, 40, batch_size, use_pcd, cd_k, output_dir)
+    train_rbm.train(drbn, train_xs, lr, 40, batch_size, use_pcd, cd_k, output_dir)
