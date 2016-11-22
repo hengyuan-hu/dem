@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import utils
 from rbm import RBM, GaussianRBM
 from train_rbm import *
-
+import keras_auto_encoder
 
 
 if __name__ == '__main__':
@@ -20,17 +20,17 @@ if __name__ == '__main__':
         cd_k = int(sys.argv[2])
         output_dir = None if len(sys.argv) == 3 else sys.argv[3]
 
-    train_xs = cPickle.load(file('noise_deep_encoder1_encoded_cifar10.pkl', 'rb'))
+    decoder_dir = 'old_noise_deep_model1'
+    dataset = os.path.join(decoder_dir, 'encoded_cifar10.pkl')
+    train_xs = cPickle.load(file(dataset, 'rb'))
     num_imgs = train_xs.shape[0]
     train_xs = train_xs.reshape(num_imgs, -1)
 
     print train_xs.shape
     batch_size = 100
-    lr = 0.0001 if use_pcd else 0.1
+    lr = 0.001 if use_pcd else 0.1
 
-    # train_xs /= train_xs.max()
+    rbm = RBM(train_xs[0].size, 1000, output_dir)
 
-    rbm = RBM(train_xs[0].size, 500, output_dir)
-    # rbm = GaussianRBM(train_xs[0].size, 2000, output_dir)
-
-    train(rbm, train_xs, lr, 100, batch_size, use_pcd, cd_k, output_dir)
+    train(rbm, train_xs, lr, 500, batch_size, use_pcd, cd_k,
+          output_dir, decoder_dir=decoder_dir)
