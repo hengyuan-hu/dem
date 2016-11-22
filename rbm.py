@@ -137,7 +137,6 @@ class GaussianRBM(RBM):
             == (vis_samples.get_shape().as_list()[:1] + [1])
         return -vbias_term - sum_log + vis_square_sum
 
-
     def vhv(self, vis_samples):
         hid_samples = self.sample(self.compute_up(vis_samples))
         vis_mean = self.compute_down(hid_samples)
