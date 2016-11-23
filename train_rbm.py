@@ -47,6 +47,9 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir,
         init_shape = tuple([num_samples] + rbm.vis_shape)
         ph_sample_init = tf.placeholder(tf.float32, init_shape, name='sample_input')
         gen_samples = rbm.sample_from_rbm(num_steps, num_samples, ph_sample_init)
+        output_dir = os.path.join(decoder_dir, output_dir)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
     sess = utils.get_session()
     with sess.as_default():
@@ -76,9 +79,6 @@ def train(rbm, train_xs, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir,
             print 'Train Loss:', loss_vals.mean()
             print '\tTime took:', time.time() - t
             if (i+1) % 10 == 0 and output_dir is not None:
-                if not os.path.exists(output_dir):
-                    output_dir = os.path.join(decoder_dir, output_dir)
-                    os.makedirs(output_dir)
                 saver = tf.train.Saver()
                 save_path = saver.save(
                     sess, os.path.join(output_dir, 'epoch%d.ckpt' % (i+1)))
