@@ -5,6 +5,7 @@ import time
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import utils
+import keras_auto_encoder
 
 
 def _copy_tensor_list(tensors):
@@ -172,28 +173,93 @@ def train(dbm, xs, init_lr, num_epoch, batch_size,
             if output_dir is not None:
                 if not os.path.exists(output_dir):
                     os.makedirs(output_dir)
-                # saver = tf.train.Saver()
-                # save_path = saver.save(
-                #     self.sess,
-                #     os.path.join(output_dir, '%s-epoch%d.ckpt' % (self.name, i)))
-                # print 'Model saved to:', save_path
                 imgs = sess.run(sample_imgs)
                 img_path = os.path.join(output_dir, 'epoch%d-plot.png' % i)
                 utils.vis_samples(imgs, 10, 10, (28, 28), img_path)
 
 
-if __name__ == '__main__':
-    lr = 0.01
-    num_epoch = 200
-    batch_size = 10
-    mf_k = 10
-    pcd_k = 1
-    pcd_chain_size = 100
-    output_dir = 'test_dbm'
+def train_with_decoder(dbm, xs, init_lr, num_epoch, batch_size,
+                       mf_k, pcd_k, pcd_chain_size, output_dir, decoder_dir):
+    num_batches = len(xs) / batch_size
+    assert num_batches * batch_size == len(xs)
 
-    (train_xs, _), _, _ = cPickle.load(file('mnist.pkl', 'rb'))
+    vis = tf.placeholder(tf.float32, (None,) + xs.shape[1:], name='vis_input')
+    lr = tf.placeholder(tf.float32, (), name='lr')
+
+    pcd_states = [tf.placeholder(tf.float32, (pcd_chain_size, i)) for i in dbm.num_units]
+    pcd_vals = [np.random.uniform(0, 1, (pcd_chain_size, i)) for i in dbm.num_units]
+
+    loss, updates, new_pcd_states = dbm.train_step(lr, vis, pcd_states, mf_k, pcd_k)
+    if output_dir is not None:
+        sample_imgs = dbm.sample_from_dbm(100, 1000)
+        output_dir = os.path.join(decoder_dir, output_dir)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+    sess = utils.get_session()
+    with sess.as_default():
+        tf.initialize_all_variables().run()
+
+        encoder, decoder = keras_auto_encoder.load_encoder_decoder(
+            (32, 32, 3),
+            keras_auto_encoder.deep_encoder1, os.path.join(decoder_dir, 'encoder'),
+            keras_auto_encoder.deep_decoder1, os.path.join(decoder_dir, 'decoder')
+        )
+
+        for i in range(num_epoch):
+            np.random.shuffle(xs)
+            t = time.time()
+            loss_vals = np.zeros(num_batches)
+            for b in range(num_batches):
+                batch_xs = xs[b*batch_size : (b+1)*batch_size]
+                feed_dict = {vis: batch_xs,
+                             lr: utils.scheduled_lr(init_lr, i, num_epoch)}
+                for key, val in zip(pcd_states, pcd_vals):
+                    feed_dict[key] = val
+
+                loss_val, _, pcd_vals = sess.run(
+                    [loss, updates, new_pcd_states], feed_dict=feed_dict)
+                loss_vals[b] = loss_val
+            print 'Epoch: %d, Train Loss: %s' % (i+1, loss_vals.mean())
+            print '\tTime took:', time.time() - t
+
+            if (i+1) % 10 == 0 and output_dir is not None:
+                saver = tf.train.Saver()
+                save_path = saver.save(
+                    sess, os.path.join(output_dir, 'epoch%d.ckpt' % (i+1)))
+                print '\tModel saved to:', save_path
+                imgs = sess.run(sample_imgs)
+                img_path = os.path.join(output_dir, 'epoch%d-plot.png' % (i+1))
+                decoder_input_shape = decoder.get_input_shape_at(0)[1:]
+                imgs = imgs.reshape((-1,) + decoder_input_shape)
+                imgs = decoder.predict(imgs)
+                utils.vis_cifar10(imgs, 10, 10, img_path)
+
+
+
+if __name__ == '__main__':
+    lr = 0.001
+    num_epoch = 200
+    batch_size = 100
+    mf_k = 10
+    pcd_k = 5
+    pcd_chain_size = 100
+    output_dir = 'dbm-500-500-lr1e-3'
+
+    # (train_xs, _), _, _ = cPickle.load(file('mnist.pkl', 'rb'))
+
+    decoder_dir = 'old_noise_deep_model1'
+    dataset = os.path.join(decoder_dir, 'encoded_cifar10.pkl')
+    train_xs = cPickle.load(file(dataset, 'rb'))
+    num_imgs = train_xs.shape[0]
+    train_xs = train_xs.reshape(num_imgs, -1)
+    print train_xs.shape
+
 
     batch_size = 20
-    dbm = DBM([784, 200, 200], output_dir)
-    train(dbm, train_xs, lr, num_epoch, batch_size,
-          mf_k, pcd_k, pcd_chain_size, output_dir)
+    dbm = DBM([640, 500, 500], output_dir)
+    train_with_decoder(dbm, train_xs, lr, num_epoch, batch_size,
+                       mf_k, pcd_k, pcd_chain_size, output_dir, decoder_dir)
+
+    # train(dbm, train_xs, lr, num_epoch, batch_size,
+    #       mf_k, pcd_k, pcd_chain_size, output_dir)
