@@ -20,7 +20,7 @@ if __name__ == '__main__':
         cd_k = int(sys.argv[2])
         output_dir = None if len(sys.argv) == 3 else sys.argv[3]
 
-    decoder_dir = 'old_noise_deep_model1'
+    decoder_dir = 'noise_02_deep_model1'
     dataset = os.path.join(decoder_dir, 'encoded_cifar10.pkl')
     train_xs = cPickle.load(file(dataset, 'rb'))
     num_imgs = train_xs.shape[0]

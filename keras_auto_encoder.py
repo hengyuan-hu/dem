@@ -149,7 +149,7 @@ def deep_model1(input_shape):
     print 'encoded shape:',  encoded._keras_shape
 
     batch_size = tf.shape(encoded)[0]
-    encoded = GaussianNoise(0.1)(encoded)
+    encoded = GaussianNoise(0.2)(encoded)
 
     x = BatchNormalization(mode=2, axis=3)(encoded)
 
@@ -225,12 +225,12 @@ if __name__ == '__main__':
     test_xs, _, _ = utils.preprocess_cifar10(test_xs)
 
     batch_size = 128
-    # auto = deep_model1(train_xs.shape[1:])
-    auto = res_autoencoder(train_xs.shape[1:], 2)
+    auto = deep_model1(train_xs.shape[1:])
+    # auto = res_autoencoder(train_xs.shape[1:], 2)
     opt = keras.optimizers.SGD(lr=0.1, momentum=0.9, decay=0.0, nesterov=True)
     auto.compile(optimizer=opt, loss='mse')
 
-    model_name = 'res_auto'
+    model_name = 'noise_02_deep_model1'
     if not os.path.exists(model_name):
         os.makedirs(model_name)
         plot(auto, to_file=os.path.join(model_name, 'graph.png'), show_shapes=True)
@@ -247,13 +247,13 @@ if __name__ == '__main__':
     save_model(auto, os.path.join(model_name, 'encoder_decoder'))
     print 'model saved'
 
-    # encoder = deep_encoder1(train_xs.shape[1:])
-    # decoder = deep_decoder1(encoder.get_output_shape_at(-1)[1:])
-    # weights = auto.get_weights()
-    # encoder_weights = encoder.get_weights()
-    # encoder.set_weights(weights[:len(encoder_weights)])
-    # decoder.set_weights(weights[len(encoder_weights):])
-    # save_model(encoder, os.path.join(model_name, 'encoder'))
-    # print 'encoder saved'
-    # save_model(decoder, os.path.join(model_name, 'decoder'))
-    # print 'decoder saved'
+    encoder = deep_encoder1(train_xs.shape[1:])
+    decoder = deep_decoder1(encoder.get_output_shape_at(-1)[1:])
+    weights = auto.get_weights()
+    encoder_weights = encoder.get_weights()
+    encoder.set_weights(weights[:len(encoder_weights)])
+    decoder.set_weights(weights[len(encoder_weights):])
+    save_model(encoder, os.path.join(model_name, 'encoder'))
+    print 'encoder saved'
+    save_model(decoder, os.path.join(model_name, 'decoder'))
+    print 'decoder saved'

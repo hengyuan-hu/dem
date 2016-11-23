@@ -13,7 +13,7 @@ def encode_dataset(dataset, encoder, output_name):
 
 
 if __name__ == '__main__':
-    model_dir = 'noise_deep_model1'
+    model_dir = 'noise_02_deep_model1'
 
     keras.backend.set_session(utils.get_session())
     (train_xs, _), (test_xs, _) = cifar10.load_data()
