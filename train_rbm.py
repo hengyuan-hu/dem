@@ -10,7 +10,6 @@ import keras_auto_encoder
 
 
 def load_model(sess, model_path):
-    tf.initialize_all_variables().run()
     saver = tf.train.Saver()
     saver.restore(sess, model_path)
     print 'Model loaded from:', model_path

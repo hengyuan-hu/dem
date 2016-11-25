@@ -46,6 +46,7 @@ def vis_cifar10(imgs, rows, cols, output_name):
         plt.show()
     else:
         plt.savefig(output_name)
+    plt.close()
 
 
 def vis_samples(imgs, rows, cols, img_shape, output_name):
@@ -66,6 +67,7 @@ def vis_weights(weights, rows, cols, neuron_shape, output_name=None, cmap='Greys
         plt.show()
     else:
         plt.savefig(output_name)
+    plt.close()
 
 
 def conv_output_length(input_length, filter_size, stride, border_mode, dilation=1):
