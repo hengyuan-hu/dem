@@ -1,25 +1,21 @@
-import numpy as np
-np.random.seed(0)
-
 import keras
-from keras.layers import Input, Dense, MaxPooling2D, UpSampling2D
+from keras.layers import Input
 from keras.layers import Convolution2D as Conv2D
 from keras.layers import Deconvolution2D as Deconv2D
-from keras.models import Model
-from keras.callbacks import TensorBoard
-import utils
-from keras.datasets import cifar10
-import matplotlib.pyplot as plt
-from keras.datasets import mnist
-from keras.layers.normalization import BatchNormalization
-import tensorflow as tf
-from keras.utils.visualize_util import plot
-import os
-from keras import regularizers
 from keras.layers.noise import GaussianNoise
-import cPickle
+from keras.layers.normalization import BatchNormalization
+from keras.models import Model
+from keras.utils.visualize_util import plot
 from keras.callbacks import LearningRateScheduler
+from keras.datasets import cifar10
+
+import os
+import cPickle
+import tensorflow as tf
+import numpy as np
 from res_auto import res_autoencoder
+import keras_utils
+import utils
 
 
 def lr_schedule(epoch):
@@ -37,28 +33,6 @@ def basic_model(input_shape):
     decoded = Conv2D(3, 3, 3, activation='linear', border_mode='same')(encoded)
     autoencoder = Model(input_img, decoded)
     return autoencoder
-
-
-def load_encoder_decoder(input_shape, encoder_func,  encoder_name,
-                         decoder_func, decoder_name):
-    encoder = encoder_func(input_shape)
-    decoder = decoder_func(encoder.get_output_shape_at(-1)[1:])
-
-    _, encoder_weight_file = _get_model_files(encoder_name)
-    _, decoder_weight_file = _get_model_files(decoder_name)
-
-    encoder.load_weights(encoder_weight_file)
-    decoder.load_weights(decoder_weight_file)
-    print('Loaded model from disk')
-    return encoder, decoder
-
-
-def load_coder(input_shape, coder_func,  coder_name):
-    coder = coder_func(input_shape)
-    _, coder_weight_file = _get_model_files(coder_name)
-    coder.load_weights(coder_weight_file)
-    print 'Loaded %s from disk' % coder_name
-    return coder
 
 
 def deep_encoder1(input_shape):
@@ -189,34 +163,6 @@ def deep_model1(input_shape):
     return autoencoder
 
 
-def save_model(model, model_name):
-    model_file, weight_file = _get_model_files(model_name)
-    # model_json = model.to_json()
-    # with open(model_file, 'w') as json_file:
-    #     json_file.write(model_json)
-    model.save_weights(weight_file)
-    print('Saved model to disk')
-
-
-def _get_model_files(model_name):
-    model_file = '%s.json' % model_name
-    weight_file = '%s.h5' % model_name
-    return model_file, weight_file
-
-
-def load_model(model_name, batch_size):
-    model_file, weight_file = _get_model_files(model_name)
-    with open(model_file, 'r') as json_file:
-        model_json = json_file.read()
-
-    model_json = model_json.replace(
-        '"output_shape": [null', '"output_shape": [%d' % batch_size)
-    loaded_model = keras.models.model_from_json(model_json)
-    loaded_model.load_weights(weight_file)
-    print('Loaded model from disk')
-    return loaded_model
-
-
 if __name__ == '__main__':
     keras.backend.set_session(utils.get_session())
 
@@ -244,7 +190,7 @@ if __name__ == '__main__':
              validation_data=(test_xs, test_xs),
              shuffle=True, callbacks=callbacks_list)
     # model_name = 'noise_deep_model1'
-    save_model(auto, os.path.join(model_name, 'encoder_decoder'))
+    keras_utils.save_model(auto, os.path.join(model_name, 'encoder_decoder'))
     print 'model saved'
 
     encoder = deep_encoder1(train_xs.shape[1:])
@@ -253,7 +199,7 @@ if __name__ == '__main__':
     encoder_weights = encoder.get_weights()
     encoder.set_weights(weights[:len(encoder_weights)])
     decoder.set_weights(weights[len(encoder_weights):])
-    save_model(encoder, os.path.join(model_name, 'encoder'))
+    keras_utils.save_model(encoder, os.path.join(model_name, 'encoder'))
     print 'encoder saved'
-    save_model(decoder, os.path.join(model_name, 'decoder'))
+    keras_utils.save_model(decoder, os.path.join(model_name, 'decoder'))
     print 'decoder saved'

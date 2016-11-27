@@ -6,6 +6,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import utils
 import keras_auto_encoder
+import keras_utils
 
 
 def _copy_tensor_list(tensors):
@@ -200,7 +201,7 @@ def train_with_decoder(dbm, xs, init_lr, num_epoch, batch_size,
     with sess.as_default():
         tf.initialize_all_variables().run()
 
-        encoder, decoder = keras_auto_encoder.load_encoder_decoder(
+        encoder, decoder = keras_utils.load_encoder_decoder(
             (32, 32, 3),
             keras_auto_encoder.deep_encoder1, os.path.join(decoder_dir, 'encoder'),
             keras_auto_encoder.deep_decoder1, os.path.join(decoder_dir, 'decoder')
