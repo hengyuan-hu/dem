@@ -1,5 +1,7 @@
 # Image Generation with Deep Boltzmann Machine and (Variational) Autoencoders
 
+### Overview
+
 A reseach project trying to scale up deep bolzmann machine for realistic image generation.
 
 This repo currently implements:
@@ -12,26 +14,39 @@ This repo currently implements:
 6. Deep restricted Bolztmann network, a simple method to stack multiple RBMs for better image generation and feature extraction, in Tensorflow. [Technical report](https://arxiv.org/pdf/1611.07917v1.pdf)
 7. RBM, Gaussian-Binary RBM, Convolutional RBM, Gaussian-Binary ConvRBM in Tensorflow.
 
-Sample Images
+### Sampled Images
 
-1. RBM+VAE, (both trained on entire cifar-10)
+RBM+VAE, (both trained on entire cifar-10)
 
-   ![](figs/rbm_vae.png)
+![](figs/rbm_vae.png)
 
-2. VAE trained on entire cifar-10 while RBM trained on a specific class (horse and ship).
+***
 
-   ![Horse](figs/rbm_vae_horse.png)
+VAE trained on entire cifar-10 while RBM trained on a specific class (horse and ship)
 
-   ![ship](figs/rbm_vae_ship.png)
+:racehorse:
 
-   3. RBM + Autoencoder
+![Horse](figs/rbm_vae_horse.png)
 
-      ![](figs/rbm_ae.png)
+:sailboat:
 
-      4. Convolutional deep restricted Bolztmann network
+![ship](figs/rbm_vae_ship.png)
 
-         ![](figs/mnist_conv.png)
+***
 
-         ![](figs/horse_conv.png)
+RBM + Autoencoder
 
-Download the MNIST dataset from: https://drive.google.com/file/d/0B_r9W7MOBsRsYUlKUnRTa1Fxdmc/view?usp=sharing
+![](figs/rbm_ae.png)
+
+***
+
+Convolutional deep restricted Bolztmann network
+
+1. Mnist
+
+![](figs/mnist_conv.png)
+
+2. Weizmann Horse
+
+![](figs/horse_conv.png)
+
