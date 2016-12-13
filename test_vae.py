@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     init = np.random.normal(0, 1, (num_samples,)+input_shape)
 
-    model_name = 'vae2'
+    model_name = 'vae2_horse'
     decoder = vae.deep_decoder1(input_shape)
     decoder.load_weights(os.path.join(model_name, 'decoder.h5'))
     print 'decoder loaded'

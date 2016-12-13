@@ -140,10 +140,19 @@ def deep_model1(input_shape):
     return autoencoder, vae_loss
 
 
+def split_dataset(xs, ys, idx):
+    loc = np.where(ys == idx)[0]
+    return xs[loc], ys[loc]
+
+
 if __name__ == '__main__':
     keras.backend.set_session(utils.get_session())
 
-    (train_xs, _), (test_xs, _) = cifar10.load_data()
+    (train_xs, train_ys), (test_xs, test_ys) = cifar10.load_data()
+    train_xs, train_ys = split_dataset(train_xs, train_ys, 7)
+    test_xs, test_ys = split_dataset(test_xs, test_ys, 7)
+    print 'Training set shape:', train_xs.shape
+
     train_xs, mean, std = utils.preprocess_cifar10(train_xs)
     test_xs, _, _ = utils.preprocess_cifar10(test_xs)
 
@@ -153,20 +162,18 @@ if __name__ == '__main__':
     opt = keras.optimizers.Adam()
     auto.compile(optimizer=opt, loss=loss)
 
-    model_name = 'vae2'
+    model_name = 'vae2_horse'
     if not os.path.exists(model_name):
         os.makedirs(model_name)
     plot(auto, to_file=os.path.join(model_name, 'graph.png'), show_shapes=True)
     print 'model graph plotted'
 
     # auto.load_weights(os.path.join(model_name, 'encoder_decoder.h5'))
-    lrate = LearningRateScheduler(lr_schedule)
-    callbacks_list = [lrate]
     auto.fit(train_xs, train_xs,
              nb_epoch=50,
              batch_size=batch_size,
              validation_data=(test_xs, test_xs),
-             shuffle=True, callbacks=callbacks_list)
+             shuffle=True)
     keras_utils.save_model(auto, os.path.join(model_name, 'encoder_decoder'))
     print 'model saved'
 
