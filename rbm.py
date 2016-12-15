@@ -32,7 +32,7 @@ class RBM(object):
         return vis_p
 
     def sample(self, ps):
-        rand_uniform = tf.random_uniform(ps.get_shape().as_list(), 0, 1)
+        rand_uniform = tf.random_uniform(tf.shape(ps), 0, 1)
         samples = tf.to_float(rand_uniform < ps)
         return samples
 

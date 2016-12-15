@@ -33,16 +33,3 @@ def _get_model_files(model_name):
     model_file = '%s.json' % model_name
     weight_file = '%s.h5' % model_name
     return model_file, weight_file
-
-
-def load_model(model_name, batch_size):
-    model_file, weight_file = _get_model_files(model_name)
-    with open(model_file, 'r') as json_file:
-        model_json = json_file.read()
-
-    model_json = model_json.replace(
-        '"output_shape": [null', '"output_shape": [%d' % batch_size)
-    loaded_model = keras.models.model_from_json(model_json)
-    loaded_model.load_weights(weight_file)
-    print('Loaded model from disk')
-    return loaded_model

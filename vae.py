@@ -46,7 +46,7 @@ def deep_decoder1(input_shape):
     print 'decoder input shape:', z._keras_shape
 
     batch_size = tf.shape(z)[0]
-    h, w, _ = z._keras_shape[1:]
+    # h, w, _ = z._keras_shape[1:]
     # dim: (1, 1, 512)
     x = Deconv2D(512, 4, 4, output_shape=[batch_size, 4, 4, 512],
                  activation='relu', border_mode='same', subsample=(4, 4))(z)
@@ -56,7 +56,7 @@ def deep_decoder1(input_shape):
                  activation='relu', border_mode='same', subsample=(2, 2))(x)
     x = BatchNormalization(mode=2, axis=3)(x)
     # dim: (8, 8, 236)
-    h *= 2; w *= 2
+    # h *= 2; w *= 2
     x = Deconv2D(128, 5, 5, output_shape=(batch_size, 16, 16, 128),
                  activation='relu', border_mode='same', subsample=(2, 2))(x)
     x = BatchNormalization(mode=2, axis=3)(x)
@@ -110,8 +110,7 @@ def deep_model1(input_shape):
     x = Deconv2D(256, 5, 5, output_shape=[batch_size, 8, 8, 256],
                  activation='relu', border_mode='same', subsample=(2, 2))(x)
     x = BatchNormalization(mode=2, axis=3)(x)
-    # dim: (8, 8, 236)
-    h *= 2; w *= 2
+    # dim: (8, 8, 256)
     x = Deconv2D(128, 5, 5, output_shape=(batch_size, 16, 16, 128),
                  activation='relu', border_mode='same', subsample=(2, 2))(x)
     x = BatchNormalization(mode=2, axis=3)(x)
