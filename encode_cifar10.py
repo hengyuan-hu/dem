@@ -1,74 +1,51 @@
-import cPickle
-import numpy as np
 import keras
-from keras.datasets import cifar10
 import sys, os
-import matplotlib.pyplot as plt
+import functools
 
 import keras_auto_encoder
 import vae
 import utils
 import keras_utils
+import cifar10
 
 
-def normalize_data(data):
-    std = data.std()
-    mean = data.mean()
-    normed_data = (data - mean) / std
-    print 'mean:', mean, ', std:', std
-    return normed_data, mean, std
+def _ae_encode(data, encoder):
+    return encoder.predict(data)
 
 
-idx2cls = ['airplane', 'automobile', 'bird',
-           'cat', 'deer', 'dog', 'frog',
-           'horse', 'ship', 'truck']
-
-
-def split_encode(xs, ys, encoder, output_dir):
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    for i in range(len(idx2cls)):
-        loc = np.where(ys == i)[0]
-        cls = xs[loc]
-        print cls.shape
-        output_name = os.path.join(output_dir, idx2cls[i]+'.pkl')
-        encode_dataset(cls, encoder, output_name)
-
-
-def encode_dataset(dataset, encoder, output_name):
-    encoded = encoder.predict(dataset)
+def _vae_encode(data, encoder):
+    encoded = encoder.predict(data)
     z_mean = encoded[0]
     z_log_var = encoded[1]
+    return z_mean
 
-    set_size = len(z_mean)
-    z_mean = z_mean.reshape((set_size, -1))
-    z_log_var = z_log_var.reshape((set_size, -1))
-    normed_z_mean, zm_m, zm_std = normalize_data(z_mean)
-    normed_z_log_var, zlv_m, zlv_std = normalize_data(z_log_var)
 
-    data = normed_z_mean
-    # plt.hist(data)
-    # plt.show()
-    # data = np.hstack((normed_z_mean, normed_z_log_var))
-    print 'dataset shape:', data.shape
-    cPickle.dump([data, zm_m, zm_std], open(output_name, 'wb'))
-    print 'dataset encoded and dumped into', output_name
+def _encode_dataset(encode_func):
+    def f(dataset, encoder, decoder):
+        encoded_train_xs = encode_func(dataset.train_xs, encoder)
+        encoded_test_xs = encode_func(dataset.test_xs, encoder)
+        return cifar10.Cifar10Wrapper(decoder, encoded_train_xs, dataset.train_ys,
+                                      encoded_test_xs, dataset.test_ys)
+    return f
+
+
+ae_encode = _encode_dataset(_ae_encode)
+vae_encode = _encode_dataset(_vae_encode)
 
 
 if __name__ == '__main__':
-    model_dir = 'vae2'
-
     keras.backend.set_session(utils.get_session())
-    (train_xs, train_ys), (test_xs, test_ys) = cifar10.load_data()
-    train_xs, _, _ = utils.preprocess_cifar10(train_xs)
-    test_xs, _, _ = utils.preprocess_cifar10(test_xs)
 
-    encoder = keras_utils.load_coder(train_xs.shape[1:], vae.deep_encoder1,
-                             os.path.join(model_dir, 'encoder'))
+    model_dir = 'relu_deep_model1_relu_6'
+    dataset = cifar10.Cifar10Wrapper()
+    # encoder_func = keras_auto_encoder.relu_encoder1
+    encoder_func = functools.partial(keras_auto_encoder.relu_encoder1, relu_max=6)
 
-    split_encode(train_xs, train_ys, encoder,
-                 os.path.join(model_dir, 'split_train'))
-    split_encode(test_xs, test_ys, encoder,
-                 os.path.join(model_dir, 'split_test'))
+    encoder = keras_utils.load_coder(
+        dataset.train_xs.shape[1:], encoder_func,
+        os.path.join(model_dir, 'encoder')
+    )
 
-    # encode_dataset(train_xs, encoder, os.path.join(model_dir, 'encoded_cifar10.pkl'))
+    encoded_dataset = ae_encode(dataset, encoder, 'keras_auto_encoder.relu_decoder1')
+    encoded_dataset.plot_distribution(os.path.join(model_dir, 'encoded_dist.png'))
+    encoded_dataset.dump_to_h5(os.path.join(model_dir, 'encoded_cifar10.h5'))
