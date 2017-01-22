@@ -60,6 +60,10 @@ def vis_samples(imgs, rows, cols, img_shape, output_name):
     return vis_weights(imgs.T, rows, cols, img_shape, output_name, 'Greys_r')
 
 
+def vis_mnist(imgs, rows, cols, output_name):
+    return vis_weights(imgs.T, rows, cols, (32, 32), output_name, 'Greys_r')
+
+
 def vis_weights(weights, rows, cols, neuron_shape, output_name=None, cmap='Greys'):
     assert weights.shape[-1] == rows * cols
     f, axarr = plt.subplots(rows, cols, figsize=neuron_shape)
