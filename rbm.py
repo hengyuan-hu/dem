@@ -32,6 +32,7 @@ class RBM(object):
         return vis_p
 
     def sample(self, ps):
+        # TODO: change this to static method and others
         rand_uniform = tf.random_uniform(tf.shape(ps), 0, 1)
         samples = tf.to_float(rand_uniform < ps)
         return samples
@@ -46,9 +47,10 @@ class RBM(object):
         pre_log_term = 1 + tf.exp(pre_sigmoid_hid_p)
         log_term = tf.log(pre_log_term)
         sum_log = tf.reduce_sum(log_term, reduction_indices=1, keep_dims=True)
-        assert  (-vbias_term - sum_log).get_shape().as_list() \
-            == (vis_samples.get_shape().as_list()[:1] + [1])
-        return -vbias_term - sum_log
+        energy = -vbias_term - sum_log
+        assert (energy.get_shape().as_list()
+                == [vis_samples.get_shape().as_list()[0], 1])
+        return energy
 
     def vhv(self, vis_samples):
         hid_samples = self.sample(self.compute_up(vis_samples))
@@ -73,6 +75,7 @@ class RBM(object):
         return vis_p, vis_samples
 
     def get_loss_updates(self, lr, vis, persistent_vis, cd_k):
+        # TODO: remove lr from this function and others
         if persistent_vis is not None:
             recon_vis_p, recon_vis_samples = self.cd(persistent_vis, cd_k)
         else:
@@ -107,7 +110,8 @@ class RBM(object):
             vis_p, vis_samples = self.vhv(vis_samples)
             return x+1, vis_p, vis_samples
 
-        _, prob_imgs, sampled_imgs = tf.while_loop(cond, body, [0, vis, vis], back_prop=False)
+        _, prob_imgs, sampled_imgs = tf.while_loop(
+            cond, body, [0, vis, vis], back_prop=False)
         return prob_imgs, sampled_imgs
 
 
