@@ -193,7 +193,7 @@ def deep_decoder2(input_shape):
     x = BatchNormalization(mode=2, axis=3)(encoded)
 
     # batch_size, h, w, _ = tf.shape(x)
-    batch_size  = tf.shape(x)[0]
+    batch_size = tf.shape(x)[0]
     # dim: (1, 1, 512)
     x = Deconv2D(512, 4, 4, output_shape=[batch_size, 4, 4, 512],
                  activation='relu', border_mode='same', subsample=(4, 4))(encoded)
