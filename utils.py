@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
+import warnings
 
 
 CIFAR10_COLOR_MEAN_RGB = np.array([125.3, 123.0, 113.9]).reshape(1, 1, 3)
@@ -8,6 +9,11 @@ CIFAR10_COLOR_STD_RGB  = np.array([63.0,  62.1,  66.7]).reshape(1, 1, 3)
 
 
 def get_session():
+    warnings.warn("deprecated, call create_session()", DeprecationWarning)
+    create_session()
+
+
+def create_session():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     return tf.Session(config=config)
@@ -19,13 +25,25 @@ def sample_bernoulli(ps):
     return samples
 
 
-def scheduled_lr(base_lr, epoch, total_epoch):
-    if epoch < 0.5 * total_epoch:
-        return base_lr
-    elif epoch < 0.75 * total_epoch:
-        return base_lr * 0.1
-    else:
-        return base_lr * 0.01
+# def scheduled_lr(base_lr, epoch, total_epoch):
+#     if epoch < 0.5 * total_epoch:
+#         return base_lr
+#     elif epoch < 0.75 * total_epoch:
+#         return base_lr * 0.1
+#     else:
+#         return base_lr * 0.01
+
+
+def generate_decay_lr_schedule(max_epoch, base, decay):
+    def lr_schedule(epoch):
+        if epoch < 0.5 * max_epoch:
+            return base
+        elif epoch < 0.75 * max_epoch:
+            return base * decay
+        else:
+            return base * decay * decay
+
+    return lr_schedule
 
 
 def preprocess_cifar10(dataset):
@@ -56,12 +74,30 @@ def vis_cifar10(imgs, rows, cols, output_name):
     plt.close()
 
 
+def vis_mnist(imgs, rows, cols, output_name):
+    # TODO: refactor vis_mnist and vis_cifar10 to remove repeated code
+    imgs = np.maximum(np.zeros(imgs.shape), imgs)
+    imgs = np.minimum(np.ones(imgs.shape), imgs)
+    imgs = imgs.reshape(-1, 28, 28)
+    assert imgs.shape[0] == rows * cols, \
+        'num images does not match %d vs %d' % (imgs.shape[0], rows * cols)
+
+    f, axarr = plt.subplots(rows, cols, figsize=(28, 28))
+    for r in range(rows):
+        for c in range(cols):
+            img = imgs[r * cols + c]
+            axarr[r][c].imshow(img, cmap='Greys_r')
+            axarr[r][c].set_axis_off()
+    f.subplots_adjust(hspace=0.2, wspace=0.2)
+    if output_name:
+        plt.savefig(output_name)
+    else:
+        plt.show()
+    plt.close()
+
+
 def vis_samples(imgs, rows, cols, img_shape, output_name):
     return vis_weights(imgs.T, rows, cols, img_shape, output_name, 'Greys_r')
-
-
-def vis_mnist(imgs, rows, cols, output_name):
-    return vis_weights(imgs.T, rows, cols, (32, 32), output_name, 'Greys_r')
 
 
 def vis_weights(weights, rows, cols, neuron_shape, output_name=None, cmap='Greys'):
@@ -79,6 +115,14 @@ def vis_weights(weights, rows, cols, neuron_shape, output_name=None, cmap='Greys
     else:
         plt.savefig(output_name)
     plt.close()
+
+
+def log_keras_history(history, file_name):
+    loss = history['loss']
+    val_loss = history['val_loss']
+    log = open(file_name, 'a')
+    for l, vl in zip(loss, val_loss):
+        print >>log, 'loss: %8.4f; val_loss: %8.4f' % (l, vl)
 
 
 def conv_output_length(input_length, filter_size, stride, border_mode, dilation=1):
