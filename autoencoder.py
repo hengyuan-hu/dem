@@ -1,12 +1,6 @@
-# import tensorflow as tf
-# import numpy as np
 import os
 import keras
-from keras.layers import Input # , Activation
-# from keras.layers import Convolution2D as Conv2D
-# from keras.layers import Deconvolution2D as Deconv2D
-# from keras.layers.noise import GaussianNoise
-# from keras.layers.normalization import BatchNormalization
+from keras.layers import Input
 from keras.models import Model
 from keras.utils.visualize_util import plot
 from keras.callbacks import LearningRateScheduler
