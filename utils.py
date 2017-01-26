@@ -2,15 +2,11 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
 import warnings
+import keras.backend as K
 
 
 CIFAR10_COLOR_MEAN_RGB = np.array([125.3, 123.0, 113.9]).reshape(1, 1, 3)
 CIFAR10_COLOR_STD_RGB  = np.array([63.0,  62.1,  66.7]).reshape(1, 1, 3)
-
-
-def get_session():
-    warnings.warn("deprecated, call create_session()", DeprecationWarning)
-    create_session()
 
 
 def create_session():
@@ -19,10 +15,24 @@ def create_session():
     return tf.Session(config=config)
 
 
+def initialize_uninitialized_variables_by_keras():
+    K.tensorflow_backend._initialize_variables()
+
+
 def sample_bernoulli(ps):
     rand_uniform = tf.random_uniform(tf.shape(ps), 0, 1)
     samples = tf.to_float(rand_uniform < ps)
     return samples
+
+
+def softplus(x):
+    """Stable impl of log(1 + e^x), no overflow.
+
+    Rewrite the function as: x - min(0,x) + log(1 + e^(-abs(x)))
+    """
+    zeros = tf.zeros_like(x)
+    min_zero_x = tf.minimum(zeros, x)
+    return x - min_zero_x + tf.log(1 + tf.exp(-tf.abs(x)))
 
 
 # def scheduled_lr(base_lr, epoch, total_epoch):
@@ -53,7 +63,6 @@ def preprocess_cifar10(dataset):
 
 def vis_cifar10(imgs, rows, cols, output_name):
     imgs = imgs * CIFAR10_COLOR_STD_RGB + CIFAR10_COLOR_MEAN_RGB
-    print imgs.min(), imgs.max()
     imgs = np.maximum(np.zeros(imgs.shape), imgs)
     imgs = np.minimum(np.ones(imgs.shape)*255, imgs)
     print imgs.shape
@@ -79,6 +88,10 @@ def vis_mnist(imgs, rows, cols, output_name):
     imgs = np.maximum(np.zeros(imgs.shape), imgs)
     imgs = np.minimum(np.ones(imgs.shape), imgs)
     imgs = imgs.reshape(-1, 28, 28)
+    # imgs -= imgs.min()
+    # imgs /= imgs.max()
+    # print '>>> in vis_mnist(), min: %.4f, max: %.4f' % (imgs.min(), imgs.max())
+    # assert imgs.min() >= 0 and imgs.max() <= 1
     assert imgs.shape[0] == rows * cols, \
         'num images does not match %d vs %d' % (imgs.shape[0], rows * cols)
 
