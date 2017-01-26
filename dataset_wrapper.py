@@ -39,6 +39,12 @@ class DatasetWrapper(object):
             hf.create_dataset('test_ys', data=self.test_ys)
         print 'Dataset written to %s' % h5_path
 
+    def reshape(self, new_shape):
+        self.train_xs = self.train_xs.reshape((-1,) + new_shape)
+        self.test_xs = self.test_xs.reshape((-1,) + new_shape)
+        self.x_shape = self.train_xs.shape[1:]
+        assert self.x_shape == new_shape
+
     def plot_data_dist(self, fig_path, num_bins=50):
         xs = np.vstack((self.train_xs, self.test_xs))
         if len(xs.shape) > 2:
