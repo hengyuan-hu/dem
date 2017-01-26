@@ -6,9 +6,11 @@ import utils
 def kinetic_energy(vel):
     """Returns the kinetic energy computed in the simplest way.
 
-    vel: 2D vector, num_chains * dimension
+    vel: (N+1)D vector, num_chains * (N dimension)
     """
-    return 0.5 * tf.reduce_sum(tf.square(vel), 1)
+    num_dims = vel.get_shape().ndims - 1
+    dims = [i+1 for i in range(num_dims)]
+    return 0.5 * tf.reduce_sum(tf.square(vel), dims)
 
 
 def hamiltonian(pos, vel, potential_fn):
@@ -47,6 +49,7 @@ def hmc_sample(pos, stepsize, num_steps, potential_fn):
         hamiltonian(pos, vel, potential_fn),
         hamiltonian(final_pos, final_vel, potential_fn)
     )
+
     new_pos = tf.select(accept, final_pos, pos)
     accept_rate = tf.reduce_mean(tf.cast(accept, tf.float32), 0)
     return accept_rate, new_pos
@@ -126,7 +129,7 @@ def sampler_on_nd_gaussian(burnin, num_chains, num_samples, dim):
     sample_op, updates = hmc_sampler.sample()
 
     samples = []
-    sess = utils.get_session()
+    sess = utils.create_session()
     with sess.as_default():
         tf.set_random_seed(666)
         tf.global_variables_initializer().run()
@@ -163,4 +166,4 @@ def sampler_on_nd_gaussian(burnin, num_chains, num_samples, dim):
 
 
 if __name__ == '__main__':
-    sampler_on_nd_gaussian(1000, 3, 1000, dim=50)
+    sampler_on_nd_gaussian(1000, 3, 1000, dim=5)
