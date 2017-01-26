@@ -72,7 +72,7 @@ def train(rbm, dataset, lr, num_epoch, batch_size, use_pcd, cd_k, output_dir,
                                    ph_pcd_chain: pcd_chain_vis})
                 else:
                     loss_vals[b], _ = sess.run(
-                            [loss,train_step], feed_dict={ph_vis: batch_xs, ph_lr: lr })
+                        [loss,train_step], feed_dict={ph_vis: batch_xs, ph_lr: lr })
 
             print 'Epoch %d, Train Loss: %s' % (i, loss_vals.mean())
             print '\tTime took:', time.time() - t
