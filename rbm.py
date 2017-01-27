@@ -151,4 +151,5 @@ if __name__ == '__main__':
     gibbs_sampler = sampler_generator(cd_k=cd_k, num_chains=20)
     trainer = DEMTrainer(
         sess, dataset, rbm, gibbs_sampler, sampler_generator, utils.vis_mnist)
-    trainer.train(0.01, 50, batch_size, 'test/mnist_rbm_chain20_lr0.01
+    trainer.train(0.001, 50, batch_size, 'test/mnist_rbm_chain20_lr0.001')
+    trainer.dump_log('test/mnist_rbm_chain20_lr0.001')
