@@ -19,6 +19,7 @@ class DEMTrainer(object):
         self.x_data = tf.placeholder(tf.float32, [None]+list(self.x_shape))
         self.x_model = tf.placeholder(tf.float32, [None]+list(self.x_shape))
         self.sess = sess
+        self.log = []
 
     def train(self, lr, num_epoch, batch_size, folder):
         if folder and not os.path.exists(folder):
@@ -65,7 +66,8 @@ class DEMTrainer(object):
                 # print '\tAccept rate:', self.sess.run([self.sampler.avg_accept_rate])
                 # print '\tStep size:', self.sess.run([self.sampler.stepsize])
 
-            print 'Epoch %d, Train Loss: %s' % (e+1, loss_vals.mean())
+            self.log.append('Epoch %d, Train Loss: %.4f' % (e+1, loss_vals.mean()))
+            print self.log[-1]
             # print '\tTime Taken: %ss' % (time.time() - t)
             # print '\tAccept rate:', self.sess.run([self.sampler.avg_accept_rate])
             # print '\tStep size:', self.sess.run([self.sampler.stepsize])
@@ -84,6 +86,11 @@ class DEMTrainer(object):
                 # self._save_samples(x_model, chain_path)
 
         # self.sess.close()
+    def dump_log(self, folder):
+        path = os.path.join(folder, 'dem_train.log')
+        with open(path, 'w') as f:
+            f.write('\n'.join(self.log))
+            f.write('\n')
 
     def _draw_samples(self, burnin=1000):
         """Use a new sampler to draw samples from the trained model.
