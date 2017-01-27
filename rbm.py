@@ -38,13 +38,11 @@ class RBM(object):
         return: free energy of shape: [batch_size, 1]
         """
         vbias_term = tf.matmul(vis_samples, self.vbias, transpose_b=True)
+        vbias_term = tf.reshape(vbias_term, [-1]) # flattern
         h_total_input = tf.matmul(vis_samples, self.weights) + self.hbias
         softplus_term = utils.softplus(h_total_input)
-        sum_softplus = tf.reduce_sum(softplus_term, 1, keep_dims=True)
-        energy = -vbias_term - sum_softplus
-        assert (energy.get_shape().as_list()
-                == [vis_samples.get_shape().as_list()[0], 1])
-        return energy
+        sum_softplus = tf.reduce_sum(softplus_term, 1)
+        return -vbias_term - sum_softplus
 
     def vhv(self, vis_samples):
         hid_samples = utils.sample_bernoulli(self._compute_up(vis_samples))
