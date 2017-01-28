@@ -324,7 +324,7 @@ def relu_deep_model1(input_shape, relu_max):
     batch_size  = tf.shape(x)[0]
     # dim: (1, 1, 512)
     x = Deconv2D(512, 4, 4, output_shape=[batch_size, 4, 4, 512],
-                 activation='relu', border_mode='same', subsample=(4, 4))(encoded)
+                 activation='relu', border_mode='same', subsample=(4, 4))(x)
     x = BatchNormalization(mode=2, axis=3)(x)
     # (4, 4, 512)
     x = Deconv2D(256, 5, 5, output_shape=[batch_size, 8, 8, 256],
