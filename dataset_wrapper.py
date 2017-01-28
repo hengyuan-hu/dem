@@ -29,9 +29,6 @@ class DatasetWrapper(object):
         raise NotImplementedError
 
     def dump_to_h5(self, h5_path):
-        assert self.train_xs.max() <= 1 and self.train_xs.min() >= 0
-        assert self.test_xs.max() <= 1 and self.test_xs.min() >= 0
-
         with h5py.File(h5_path, 'w') as hf:
             hf.create_dataset('train_xs', data=self.train_xs)
             hf.create_dataset('train_ys', data=self.train_ys)
@@ -50,7 +47,6 @@ class DatasetWrapper(object):
         if len(xs.shape) > 2:
             num_imgs = len(xs)
             xs = xs.reshape((num_imgs, -1))
-        print xs.shape
         plt.hist(xs, num_bins)
         if fig_path:
             plt.savefig(fig_path)
