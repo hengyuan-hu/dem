@@ -8,15 +8,17 @@ from keras.callbacks import LearningRateScheduler
 import utils
 
 
-def _build_model(x_shape, encode_fn, use_noise, decode_fn, weights_file):
+
+def _build_model(x_shape, use_noise, relu_max, encode_fn,
+                 decode_fn, weights_file):
     assert encode_fn is not None or decode_fn is not None, \
         'At least provide one function to build the model.'
     x = Input(x_shape)
     y = x
     if encode_fn:
-        y = encode_fn(x, use_noise)
+        y = encode_fn(x, use_noise, relu_max)
     if decode_fn:
-        y = decode_fn(y)
+        y = decode_fn(y, relu_max)
     model = Model(x, y)
     if weights_file:
         assert os.path.exists(weights_file), '%s does not exist' % weights_file
@@ -32,16 +34,19 @@ _AE_WEIGHTS_FILE = 'ae.h5'
 
 class AutoEncoder(object):
     """Wrapper class for autoencoder."""
-    def __init__(self, dataset, encode_fn, decode_fn, folder):
-        # self.x_shape = x_shape
+    def __init__(self, dataset, encode_fn, decode_fn, relu_max, folder):
         self.dataset = dataset
-        self.x_shape = self.dataset.x_shape
         self.encode_fn = encode_fn
         self.decode_fn = decode_fn
+        self.relu_max = relu_max
         self.folder = folder
         self.history = {}
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
+
+    @property
+    def x_shape(self):
+        return self.dataset.x_shape
 
     def build_models(self, weights_folder=None):
         if weights_folder:
@@ -53,12 +58,15 @@ class AutoEncoder(object):
             decoder_weights = None
             ae_weights = None
         self.ae = _build_model(
-            self.x_shape, self.encode_fn, True, self.decode_fn, ae_weights)
+            self.x_shape, True, self.relu_max,
+            self.encode_fn, self.decode_fn, ae_weights)
         self.encoder = _build_model(
-            self.x_shape, self.encode_fn, False, None, encoder_weights)
-        self.code_shape = self.encoder.get_output_shape_at(-1)[1:]
+            self.x_shape, False, self.relu_max,
+            self.encode_fn, None, encoder_weights)
+        code_shape = self.encoder.get_output_shape_at(-1)[1:]
         self.decoder = _build_model(
-            self.code_shape, None, False, self.decode_fn, decoder_weights)
+            code_shape, False, self.relu_max,
+            None, self.decode_fn, decoder_weights)
 
     def train(self, batch_size, num_epoch, lr_schedule):
         opt = keras.optimizers.SGD(lr=lr_schedule(0), momentum=0.9, nesterov=True)
@@ -116,6 +124,8 @@ class AutoEncoder(object):
     def encode(self, dataset_cls):
         encoded_train_xs = self.encoder.predict(self.dataset.train_xs)
         encoded_test_xs = self.encoder.predict(self.dataset.test_xs)
+        print 'in encode: min: %f, max: %f' \
+            % (encoded_train_xs.min(), encoded_train_xs.max())
         encoded_dataset = dataset_cls(encoded_train_xs, self.dataset.train_ys,
                                       encoded_test_xs, self.dataset.test_xs)
         return encoded_dataset
