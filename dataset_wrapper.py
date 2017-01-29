@@ -12,7 +12,10 @@ class DatasetWrapper(object):
         self.train_ys = train_ys
         self.test_xs = test_xs
         self.test_ys = test_ys
-        self.x_shape = self.train_xs.shape[1:]
+
+    @property
+    def x_shape(self):
+        return self.train_xs.shape[1:]
 
     @classmethod
     def load_from_h5(cls, h5_path):
@@ -37,10 +40,11 @@ class DatasetWrapper(object):
         print 'Dataset written to %s' % h5_path
 
     def reshape(self, new_shape):
-        self.train_xs = self.train_xs.reshape((-1,) + new_shape)
-        self.test_xs = self.test_xs.reshape((-1,) + new_shape)
-        self.x_shape = self.train_xs.shape[1:]
-        assert self.x_shape == new_shape
+        batch_size = self.train_xs.shape[0]
+        self.train_xs = self.train_xs.reshape((batch_size,) + new_shape)
+        batch_size = self.test_xs.shape[0]
+        self.test_xs = self.test_xs.reshape((batch_size,) + new_shape)
+        assert self.train_xs.shape[1:] == self.test_xs.shape[1:]
 
     def plot_data_dist(self, fig_path, num_bins=50):
         xs = np.vstack((self.train_xs, self.test_xs))
