@@ -1,12 +1,43 @@
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
-import warnings
+import keras
 import keras.backend as K
+import math
 
 
 CIFAR10_COLOR_MEAN_RGB = np.array([125.3, 123.0, 113.9]).reshape(1, 1, 3)
 CIFAR10_COLOR_STD_RGB  = np.array([63.0,  62.1,  66.7]).reshape(1, 1, 3)
+
+
+def relu_n(n):
+    if n:
+        n =  np.float32(n)
+
+    def f(x):
+        return keras.activations.relu(x, max_value=n)
+
+    return f
+
+
+def scale_down(n):
+    if n:
+        n =  np.float32(n)
+
+    def f(x):
+        return x / n
+
+    return f
+
+
+def scale_up(n):
+    if n:
+        n =  np.float32(n)
+
+    def f(x):
+        return x * n
+
+    return f
 
 
 def create_session():
@@ -65,7 +96,7 @@ def vis_cifar10(imgs, rows, cols, output_name):
     imgs = imgs * CIFAR10_COLOR_STD_RGB + CIFAR10_COLOR_MEAN_RGB
     imgs = np.maximum(np.zeros(imgs.shape), imgs)
     imgs = np.minimum(np.ones(imgs.shape)*255, imgs)
-    print imgs.shape
+    # print imgs.shape
     imgs = imgs.astype(np.uint8)
 
     assert imgs.shape[0] == rows * cols
@@ -85,11 +116,14 @@ def vis_cifar10(imgs, rows, cols, output_name):
 
 def vis_mnist(imgs, rows, cols, output_name):
     # TODO: refactor vis_mnist and vis_cifar10 to remove repeated code
-    imgs = np.maximum(np.zeros(imgs.shape), imgs)
-    imgs = np.minimum(np.ones(imgs.shape), imgs)
-    imgs = imgs.reshape(-1, 28, 28)
+    # imgs = np.maximum(np.zeros(imgs.shape), imgs)
+    # imgs = np.minimum(np.ones(imgs.shape), imgs)
+
     # imgs -= imgs.min()
+    # print imgs.max()
     # imgs /= imgs.max()
+
+    imgs = imgs.reshape(-1, 28, 28)
     # print '>>> in vis_mnist(), min: %.4f, max: %.4f' % (imgs.min(), imgs.max())
     # assert imgs.min() >= 0 and imgs.max() <= 1
     assert imgs.shape[0] == rows * cols, \
@@ -130,12 +164,21 @@ def vis_weights(weights, rows, cols, neuron_shape, output_name=None, cmap='Greys
     plt.close()
 
 
+def factorize_number(n):
+    i = int(math.floor(math.sqrt(n)))
+    for k in range(i, 0, -1):
+        if n % k == 0:
+            j = n / k
+            break
+    return j, i
+
+
 def log_keras_history(history, file_name):
     loss = history['loss']
     val_loss = history['val_loss']
     log = open(file_name, 'a')
-    for l, vl in zip(loss, val_loss):
-        print >>log, 'loss: %8.4f; val_loss: %8.4f' % (l, vl)
+    for i, (l, vl) in enumerate(zip(loss, val_loss)):
+        print >>log, 'epoch %d, loss: %8.4f; val_loss: %8.4f' % (i, l, vl)
 
 
 def conv_output_length(input_length, filter_size, stride, border_mode, dilation=1):
