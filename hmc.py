@@ -14,6 +14,8 @@ def kinetic_energy(vel):
 
 
 def hamiltonian(pos, vel, potential_fn):
+    # print '>>>potential_shape:', potential_fn(pos).get_shape().as_list()
+    # print '>>>kinetic_shape:', kinetic_energy(vel).get_shape().as_list()
     return potential_fn(pos) + kinetic_energy(vel)
 
 
@@ -135,7 +137,7 @@ def sampler_on_nd_gaussian(burnin, num_chains, num_samples, dim):
         tf.global_variables_initializer().run()
 
         for _ in range(burnin):
-            _, _ = sess.run([sample_op, updates])
+            sess.run([sample_op, updates])
 
         for i in range(num_samples):
             new_sample, _ = sess.run([sample_op, updates])
