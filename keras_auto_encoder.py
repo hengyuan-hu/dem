@@ -190,7 +190,8 @@ def deep_encoder2(input_shape):
 def deep_decoder2(input_shape):
     encoded = Input(shape=input_shape)
     print 'encoded shape:', encoded.get_shape().as_list()
-    x = BatchNormalization(mode=2, axis=3)(encoded)
+    x = encoded
+    # x = BatchNormalization(mode=2, axis=3)(encoded)
 
     # batch_size, h, w, _ = tf.shape(x)
     batch_size = tf.shape(x)[0]
@@ -237,10 +238,10 @@ def deep_model2(input_shape):
     encoded = Activation('sigmoid')(x)
 
     print 'encoded shape:', encoded.get_shape().as_list()
-    x = BatchNormalization(mode=2, axis=3)(encoded)
+    # x = BatchNormalization(mode=2, axis=3)(encoded)
 
     # batch_size, h, w, _ = tf.shape(x)
-    batch_size  = tf.shape(x)[0]
+    batch_size  = tf.shape(encoded)[0]
     # dim: (1, 1, 512)
     x = Deconv2D(512, 4, 4, output_shape=[batch_size, 4, 4, 512],
                  activation='relu', border_mode='same', subsample=(4, 4))(encoded)
@@ -318,10 +319,12 @@ def relu_deep_model1(input_shape, relu_max):
     encoded = Activation(relu_n(relu_max))(x)
 
     print 'encoded shape:', encoded.get_shape().as_list()
-    x = BatchNormalization(mode=2, axis=3)(encoded)
+    # in the origianl design, no BN as the first layer of decoder because of bug
+    x = encoded
+    # x = BatchNormalization(mode=2, axis=3)(encoded)
 
     # batch_size, h, w, _ = tf.shape(x)
-    batch_size  = tf.shape(x)[0]
+    batch_size = tf.shape(x)[0]
     # dim: (1, 1, 512)
     x = Deconv2D(512, 4, 4, output_shape=[batch_size, 4, 4, 512],
                  activation='relu', border_mode='same', subsample=(4, 4))(x)
