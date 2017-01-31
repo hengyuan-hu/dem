@@ -1,9 +1,7 @@
 import tensorflow as tf
 import os
-import math
 import h5py
 import utils
-import dem_trainer
 
 
 class MnistDEM(object):
@@ -20,7 +18,7 @@ class MnistDEM(object):
         # not necessary to use shared vars here
         if not params_file:
             self.weights = tf.Variable(
-                tf.random_normal([self.num_z, self.num_h]), 0.0, 0.01)
+                tf.random_normal([self.num_z, self.num_h], 0.0, 0.01))
             self.zbias = tf.Variable(tf.zeros([1, self.num_z]))
             self.hbias = tf.Variable(tf.zeros([1, self.num_h]))
         else:
@@ -60,16 +58,13 @@ class MnistDEM(object):
         return loss, cost
 
     def _free_energy_with_z(self, z):
-        # target_shape = [z.get_shape().as_list()[0], 1]  # (batch_size, 1)
+        """Return binary rbm style free energy in shape: [batch_size]"""
         zbias_term = tf.matmul(z, self.zbias, transpose_b=True)
         zbias_term = tf.reshape(zbias_term, [-1]) # flattern
-        # assert zbias_term.get_shape().as_list() == target_shape
-        pre_sigmoid_hprob = tf.matmul(z, self.weights) + self.hbias
-        log_term = tf.log(1 + tf.exp(pre_sigmoid_hprob))
-        sum_log = tf.reduce_sum(log_term, 1)
-        # print '////', sum_log.get_shape().as_list()
-        # assert sum_log.get_shape().as_list() == target_shape
-        return -zbias_term - sum_log
+        h_total_input = tf.matmul(z, self.weights) + self.hbias
+        softplus_term = utils.softplus(h_total_input)
+        sum_softplus = tf.reduce_sum(softplus_term, 1)
+        return -zbias_term - sum_softplus
 
     def _z_space_reconstruction_loss(self, z):
         hprob = tf.nn.sigmoid(tf.matmul(z, self.weights) + self.hbias)
@@ -87,14 +82,16 @@ if __name__ == '__main__':
     from autoencoder import AutoEncoder
     from dataset_wrapper import MnistWrapper
     import mnist_ae
+    import dem_trainer
     import hmc
     import utils
 
     sess = utils.create_session()
     K.set_session(sess)
     dataset = MnistWrapper.load_default()
-    ae = AutoEncoder(dataset, mnist_ae.encode, mnist_ae.decode, 'test/mnist_dem/ae')
-    ae.build_models('test/mnist_dem/ae')
+    ae = AutoEncoder(dataset, mnist_ae.encode, mnist_ae.decode,
+                     mnist_ae.RELU_MAX, 'test/mnist_dem/ae')
+    ae.build_models('test/mnist_dem/ae') # load weights
 
     l1_weights = ae.encoder.layers[1].get_weights()
     print 'l1 weights sum: %s, bias sum: %s' % (
