@@ -74,18 +74,27 @@ class RBM(object):
 
 
 class GibbsSampler(object):
-    """Gibbs sampler for RBM to produce PCD chain."""
+    """Gibbs sampler for RBM to produce CD / PCD chain."""
     def __init__(self, init_vals, rbm, cd_k):
-        self.samples = tf.Variable(init_vals, dtype=tf.float32)
+        if init_vals is not None:
+            self.samples = tf.Variable(init_vals, dtype=tf.float32)
         self.rbm = rbm
         self.cd_k = cd_k
 
-    def sample(self):
-        # TODO: add attribute use_pcd, change updates to [] for cd-k
-        new_samples = self.samples
+    @property
+    def use_pcd(self):
+        return hasattr(self, 'samples')
+
+    def sample(self, x_data=None):
+        if not self.use_pcd:
+            assert x_data is not None, 'Provide x_data to use CD Gibbs sampler.'
+            new_samples = x_data
+        else:
+            new_samples = self.samples
+
         for _ in range(self.cd_k):
             vprob, new_samples = self.rbm.vhv(new_samples)
-        updates = [self.samples.assign(new_samples)]
+        updates = [self.samples.assign(new_samples)] if self.use_pcd else []
         return vprob, updates
 
 
@@ -122,21 +131,13 @@ class GibbsSampler(object):
 #         return vis_mean, vis_samples
 
 
-if __name__ == '__main__':
-    from dem_trainer import DEMTrainer
-    from dataset_wrapper import MnistWrapper
-    import keras.backend as K
-
+def test_pcd_rbm(num_hid=500, lr=0.01, batch_size=20, num_chains=20, cd_k=1):
     sess = utils.create_session()
     K.set_session(sess)
     dataset = MnistWrapper.load_default()
-    num_vis = 784
-    num_hid = 500
-    dataset.reshape((num_vis,))
-
-    # import cPickle
-    # (train_xs, _), _, _ = cPickle.load(file('mnist.pkl', 'rb'))
-    # dataset.train_xs = train_xs
+    dataset.reshape((-1,))
+    num_vis = dataset.x_shape[0]
+    # num_hid = 500
 
     rbm = RBM(num_vis, num_hid, None)
 
@@ -144,10 +145,63 @@ if __name__ == '__main__':
         init_vals = np.random.normal(0.0, 1.0, (num_chains,) + dataset.x_shape)
         return GibbsSampler(init_vals, rbm, cd_k)
 
-    batch_size = 20
-    cd_k = 1
-    gibbs_sampler = sampler_generator(cd_k=cd_k, num_chains=20)
+    num_epoch = 20
+    # batch_size = 20
+    # cd_k = 1
+    gibbs_sampler = sampler_generator(cd_k=cd_k, num_chains=num_chains)
+    # folder = 'test/mnist_rbm_chain20_lr0.01_save_weights'
+    folder = 'test/test_rbm'
+    print 'Correct Loss:'
+    with open(os.path.join(folder, 'dem_train.log'), 'r') as f:
+        log = ''.join(f.readlines())
+    print log
+
     trainer = DEMTrainer(
         sess, dataset, rbm, gibbs_sampler, sampler_generator, utils.vis_mnist)
-    trainer.train(0.001, 50, batch_size, 'test/mnist_rbm_chain20_lr0.001')
-    trainer.dump_log('test/mnist_rbm_chain20_lr0.001')
+    trainer.train(lr, num_epoch, batch_size, folder)
+    # trainer.dump_log(folder)
+    # rbm.save_model(sess, folder, 'final_')
+    sess.close()
+
+
+def test_cd_rbm(num_hid=500, lr=0.1, batch_size=20, cd_k=10):
+    sess = utils.create_session()
+    K.set_session(sess)
+    dataset = MnistWrapper.load_default()
+    dataset.reshape((-1,))
+    num_vis = dataset.x_shape[0]
+    # num_hid = 500
+
+    rbm = RBM(num_vis, num_hid, None)
+
+    def sampler_generator(cd_k=1, num_chains=100):
+        # to produce persistent sampler for sampling, not for training
+        init_vals = np.random.normal(0.0, 1.0, (num_chains,) + dataset.x_shape)
+        return GibbsSampler(init_vals, rbm, cd_k)
+
+    num_epoch = 50
+    # batch_size = 20
+    # cd_k = 1
+    gibbs_sampler = GibbsSampler(None, rbm, cd_k)
+    # folder = 'test/mnist_rbm_chain20_lr0.01_save_weights'
+    folder = 'test/test_cd%d_rbm' % cd_k
+    # print 'Correct Loss:'
+    # with open(os.path.join(folder, 'dem_train.log'), 'r') as f:
+    #     log = ''.join(f.readlines())
+    # print log
+
+    trainer = DEMTrainer(
+        sess, dataset, rbm, gibbs_sampler, sampler_generator, utils.vis_mnist)
+    trainer.train(lr, num_epoch, batch_size, folder)
+    trainer.dump_log(folder)
+    rbm.save_model(sess, folder, 'final_')
+    sess.close()
+
+
+if __name__ == '__main__':
+    from dem_trainer import DEMTrainer
+    from dataset_wrapper import MnistWrapper
+    import keras.backend as K
+
+    # test_pcd_rbm()
+    test_cd_rbm()
