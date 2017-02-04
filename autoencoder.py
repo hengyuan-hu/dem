@@ -127,7 +127,7 @@ class AutoEncoder(object):
         print 'in encode: min: %f, max: %f' \
             % (encoded_train_xs.min(), encoded_train_xs.max())
         encoded_dataset = dataset_cls(encoded_train_xs, self.dataset.train_ys,
-                                      encoded_test_xs, self.dataset.test_xs)
+                                      encoded_test_xs, self.dataset.test_ys)
         return encoded_dataset
 
 
