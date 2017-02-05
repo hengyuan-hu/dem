@@ -40,7 +40,9 @@ def scale_up(n):
     return f
 
 
-def create_session():
+def create_session(random_seed=6666):
+    if random_seed:
+        tf.set_random_seed(random_seed)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     return tf.Session(config=config)

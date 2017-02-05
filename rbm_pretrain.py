@@ -87,5 +87,6 @@ def pretrain_with_pcd():
     return pretrain(True, 2000, 500, 100, 0.01, 1)
 
 if __name__ == '__main__':
-    # pretrain_with_cd()
-    pretrain_with_pcd()
+    np.random.seed(666)
+    pretrain_with_cd()
+    # pretrain_with_pcd()
