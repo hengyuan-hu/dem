@@ -24,16 +24,16 @@ class DEMTrainer(object):
     def x_shape(self):
         return self.dataset.x_shape
 
-    def train(self, lr, num_epoch, batch_size, folder):
+    def train(self, train_config, folder):
         if folder and not os.path.exists(folder):
             os.makedirs(folder)
 
         train_xs = self.dataset.train_xs
-        num_batches = int(math.ceil(len(train_xs) / float(batch_size)))
+        num_batches = int(math.ceil(len(train_xs) / float(train_config.batch_size)))
 
         loss, cost = self.dem.loss_and_cost(self.x_data, self.x_model)
-        opt = tf.train.GradientDescentOptimizer(lr)
-        # opt = tf.train.AdamOptimizer(lr)
+        opt = tf.train.GradientDescentOptimizer(train_config.lr)
+        # opt = tf.train.AdamOptimizer(train_config.lr)
         train_step = opt.minimize(cost)
         if hasattr(self.sampler, 'samples'):
             # TODO: use a Sampler base class to improve this
@@ -56,12 +56,13 @@ class DEMTrainer(object):
         fe_x = tf.placeholder(tf.float32, [None]+list(self.x_shape))
         fe_op = self.dem.free_energy(fe_x)
 
-        for e in range(num_epoch):
+        for e in range(train_config.num_epoch):
             t = time.time()
             np.random.shuffle(train_xs)
             loss_vals = np.zeros(num_batches)
             for b in range(num_batches):
-                x_data = train_xs[b*batch_size : (b+1)*batch_size]
+                x_data = train_xs[b*train_config.batch_size
+                                  :(b+1)*train_config.batch_size]
                 if not hasattr(self.sampler, 'samples'):
                     feed_dict = {self.x_data: x_data}
                 else:
@@ -82,10 +83,10 @@ class DEMTrainer(object):
 
             self.log.append('Epoch %d, Train Loss: %.4f' % (e+1, loss_vals.mean()))
             print self.log[-1]
-            weights_sum = self.sess.run(self.dem.weights)
-            weights_sum = weights_sum.sum()
-            print '\tweights sum:', weights_sum
-            # print '\tTime Taken: %ss' % (time.time() - t)
+            # weights_sum = self.sess.run(self.dem.weights)
+            # weights_sum = weights_sum.sum()
+            # print '\tweights sum:', weights_sum
+            print '\tTime Taken: %ss' % (time.time() - t)
             # print '\tAccept rate:', self.sess.run([self.sampler.avg_accept_rate])
             # print '\tStep size:', self.sess.run([self.sampler.stepsize])
 
@@ -97,10 +98,10 @@ class DEMTrainer(object):
             if (e+1) % 5 == 0 and folder:
                 samples = self._draw_samples()
                 samples_path = os.path.join(folder, 'samples-epoch%d.png' % (e+1))
-                chain_path = os.path.join(folder, 'pcd-chain-epoch%d.png' % (e+1))
+                chain_path = os.path.join(folder, 'neg-samples-epoch%d.png' % (e+1))
                 # print 'saving imgs'
                 self._save_samples(samples, samples_path)
-                # self.dem.save_model(self.sess, folder, 'epoch_%d_' % e)
+                self.dem.save_model(self.sess, folder, 'epoch_%d_' % (e+1))
                 # self._save_samples(x_model, chain_path)
 
     def dump_log(self, folder):
