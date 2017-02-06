@@ -36,12 +36,28 @@ class TrainConfig(object):
 
         if folder is None:
             return log
+        else:
+            _create_and_write_file(log, folder, file_name)
 
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-        file_name = os.path.join(folder, file_name)
-        with open(file_name, 'w') as f:
-            f.write(log)
+
+def log_train_configs(configs, folder, file_name='train_configs.log'):
+    log = ''
+    for config in configs:
+        log += config.dump_log(None)
+        log += '-----------------\n'
+
+    if folder is None:
+        return log
+    else:
+        _create_and_write_file(log, folder, file_name)
+
+
+def _create_and_write_file(content, folder, file_name):
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    file_name = os.path.join(folder, file_name)
+    with open(file_name, 'w') as f:
+        f.write(content)
 
 
 def relu_n(n):

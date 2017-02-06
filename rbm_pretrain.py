@@ -110,8 +110,9 @@ if __name__ == '__main__':
         utils.TrainConfig(lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=1),
         utils.TrainConfig(lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
     ]
-
     output_folder = os.path.join(ae_folder, 'multi_stage_pretrain')
+    utils.log_train_configs(train_configs, output_folder)
+
     for config in train_configs:
         pretrain(sess, rbm, encoded_dataset, ae.decoder,
                  config, utils.vis_cifar10, output_folder)
