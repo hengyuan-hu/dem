@@ -4,10 +4,44 @@ import numpy as np
 import keras
 import keras.backend as K
 import math
+import os
 
 
 CIFAR10_COLOR_MEAN_RGB = np.array([125.3, 123.0, 113.9]).reshape(1, 1, 3)
 CIFAR10_COLOR_STD_RGB  = np.array([63.0,  62.1,  66.7]).reshape(1, 1, 3)
+
+
+class TrainConfig(object):
+    def __init__(self, lr, batch_size, num_epoch, use_pcd, cd_k):
+        self.lr = lr
+        self.batch_size = batch_size
+        self.num_epoch = num_epoch
+        self.use_pcd = use_pcd
+        self.cd_k = cd_k
+
+    def __str__(self):
+        if self.use_pcd:
+            return 'lr%s_pcd%d' % (self.lr, self.cd_k)
+        else:
+            return 'lr%s_cd%d' % (self.lr, self.cd_k)
+
+    # @property
+    # def configs(self):
+    #     return copy.deepcopy(self.__dict__)
+
+    def dump_log(self, folder, file_name='train_config.log'):
+        log = ''
+        for k, v in self.__dict__.items():
+            log += '%s: %s\n' % (k, v)
+
+        if folder is None:
+            return log
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        file_name = os.path.join(folder, file_name)
+        with open(file_name, 'w') as f:
+            f.write(log)
 
 
 def relu_n(n):
