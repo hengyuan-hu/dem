@@ -95,13 +95,13 @@ class DEMTrainer(object):
                 print ('\tl1 weights sum: %s, bias sum: %s'
                        % (l1_weights[0].sum(), l1_weights[1].sum()))
 
-            if (e+1) % 5 == 0 and folder:
+            if (e+1) % 10 == 0 and folder:
                 samples = self._draw_samples()
                 samples_path = os.path.join(folder, 'samples-epoch%d.png' % (e+1))
                 chain_path = os.path.join(folder, 'neg-samples-epoch%d.png' % (e+1))
                 # print 'saving imgs'
                 self._save_samples(samples, samples_path)
-                self.dem.save_model(self.sess, folder, 'epoch_%d_' % (e+1))
+                # self.dem.save_model(self.sess, folder, 'epoch_%d_' % (e+1))
                 # self._save_samples(x_model, chain_path)
 
     def dump_log(self, folder):

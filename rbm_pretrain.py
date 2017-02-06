@@ -75,12 +75,7 @@ def pretrain(sess, rbm, dataset, decoder, train_config, vis_fn, parent_dir):
     trainer.train(train_config, output_dir)
     trainer.dump_log(output_dir)
 
-
-def multi_stage_pretrain(sess, rbm, dataset, decoder,
-                         train_configs, vis_fn, parent_dir):
-    for config in train_cofigs:
-        pretrain(sess, rbm, dataset, decoder, config, vis_fn, parent_dir)
-
+    return output_dir
 
 if __name__ == '__main__':
     np.random.seed(666)
@@ -110,7 +105,7 @@ if __name__ == '__main__':
         utils.TrainConfig(lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=1),
         utils.TrainConfig(lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
     ]
-    output_folder = os.path.join(ae_folder, 'multi_stage_pretrain')
+    output_folder = os.path.join(ae_folder, 'test_pretrain')
     utils.log_train_configs(train_configs, output_folder)
 
     for config in train_configs:
