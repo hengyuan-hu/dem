@@ -9,8 +9,6 @@ class RBM(object):
     def __init__(self, num_vis, num_hid, params_file):
         self.num_vis = num_vis
         self.num_hid = num_hid
-        self.vis_shape = [self.num_vis]
-        self.hid_shape = [self.num_hid]
 
         if not params_file:
             self.weights = tf.Variable(
@@ -132,6 +130,7 @@ class GibbsSampler(object):
 
 
 def test_pcd_rbm(num_hid=500, lr=0.01, batch_size=20, num_chains=20, cd_k=1):
+    assert False, 'this function is not usable'
     sess = utils.create_session()
     K.set_session(sess)
     dataset = MnistWrapper.load_default()
@@ -165,6 +164,7 @@ def test_pcd_rbm(num_hid=500, lr=0.01, batch_size=20, num_chains=20, cd_k=1):
 
 
 def test_cd_rbm(num_hid=500, lr=0.1, batch_size=20, cd_k=10):
+    assert False, 'this function is not usable'
     sess = utils.create_session()
     K.set_session(sess)
     dataset = MnistWrapper.load_default()
