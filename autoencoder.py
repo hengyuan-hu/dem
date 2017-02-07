@@ -4,9 +4,9 @@ from keras.layers import Input
 from keras.models import Model
 from keras.utils.visualize_util import plot
 from keras.callbacks import LearningRateScheduler
+from keras.preprocessing.image import ImageDataGenerator
 
 import utils
-
 
 
 def _build_model(x_shape, use_noise, relu_max, encode_fn,
@@ -78,6 +78,26 @@ class AutoEncoder(object):
             batch_size=batch_size,
             validation_data=(self.dataset.test_xs, self.dataset.test_xs),
             shuffle=True, callbacks=callback_list)
+        self.history = history.history
+
+    def train_with_data_augmentation(self, batch_size, num_epoch, lr_schedule):
+        datagen = ImageDataGenerator(
+            width_shift_range=0.125, # randomly shift images horizontally, fraction
+            height_shift_range=0.125, # randomly shift images vertically, fraction
+            horizontal_flip=True)
+
+        opt = keras.optimizers.SGD(lr=lr_schedule(0), momentum=0.9, nesterov=True)
+        callback_list = [LearningRateScheduler(lr_schedule)]
+        self.ae.compile(optimizer=opt, loss='mse')
+        assert False, 'seems that y is not augmented.'
+        # history = self.ae.fit_generator(
+        #     datagen.flow(
+        #         self.dataset.train_xs,
+        #         self.dataset.train_xs,
+        #     nb_epoch=num_epoch,
+        #     batch_size=batch_size,
+        #     validation_data=(self.dataset.test_xs, self.dataset.test_xs),
+        #     shuffle=True, callbacks=callback_list)
         self.history = history.history
 
     def log(self):
