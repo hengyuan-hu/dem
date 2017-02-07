@@ -15,18 +15,10 @@ class RBMPretrainer(DEMTrainer):
 
     Mainly used to resolve the difference in sampling.
     """
-    def __init__(self, sess, dataset, rbm, decoder,
-                 sampler, sampler_generator, vis_fn):
+    def __init__(self, sess, dataset, rbm, decoder, sampler, vis_fn):
         self.decoder = decoder
         super(RBMPretrainer, self).__init__(
-            sess, dataset, rbm, sampler, sampler_generator, vis_fn)
-
-    def use_pcd(self):
-        return hasattr(self.sampler, 'samples')
-
-    def _draw_samples(self):
-        burnin = 1000 if self.use_pcd() else 0
-        return super(RBMPretrainer, self)._draw_samples(burnin)
+            sess, dataset, rbm, sampler, vis_fn)
 
     def _save_samples(self, samples, img_path):
         assert hasattr(self, 'decoder'), 'Please set decoder before training'
@@ -34,45 +26,38 @@ class RBMPretrainer(DEMTrainer):
         super(RBMPretrainer, self)._save_samples(samples, img_path)
 
 
-def create_cd_sampler_and_sampler_generator(rbm, cd_k, test_init):
-    if cd_k >= 10:
-        # when cd-k >= 10, use persistent sampler to generate samples,
-        # not reconstructions
-        test_init = None
+def create_sampler_generator(rbm, init_vals, chain_shape, burnin):
+    """create sampler generator to draw sample/reconstruct test."""
 
-    def sampler_generator():
-        """default params to generate samplers for sampling, not training."""
-        return GibbsSampler(test_init, rbm, 1)
+    def sampler_generator(init_vals=init_vals):
+        if init_vals is None:
+            init_vals = np.random.normal(0.0, 1.0, chain_shape)
+        return GibbsSampler(init_vals, rbm, 1, burnin)
 
-    sampler = GibbsSampler(None, rbm, cd_k)
-    return sampler, sampler_generator
-
-
-def create_pcd_sampler_and_sampler_generator(rbm, cd_k, chain_shape):
-    def sampler_generator(cd_k=1):
-        """default params to generate samplers for sampling, not training."""
-        init_vals = np.random.normal(0.0, 1.0, chain_shape)
-        return GibbsSampler(init_vals, rbm, cd_k)
-
-    sampler = sampler_generator(cd_k)
-    return sampler, sampler_generator
+    return sampler_generator
 
 
 def pretrain(sess, rbm, dataset, decoder, train_config, vis_fn, parent_dir):
     if train_config.use_pcd:
-        sampler, sampler_generator = create_pcd_sampler_and_sampler_generator(
-            rbm, train_config.cd_k, (train_config.batch_size,)+dataset.x_shape)
+        chain_shape = (train_config.batch_size,) + dataset.x_shape
+        random_init = np.random.normal(0.0, 1.0, chain_shape)
+        sampler = GibbsSampler(random_init, rbm, train_config.cd_k, None)
     else:
-        sampler, sampler_generator = create_cd_sampler_and_sampler_generator(
-            rbm, train_config.cd_k, dataset.test_xs[:100])
+        sampler = GibbsSampler(None, rbm, train_config.cd_k, None)
 
-    trainer = RBMPretrainer(sess, dataset, rbm, decoder, sampler,
-                            sampler_generator, vis_fn)
+    if train_config.draw_samples:
+        sampler_generator = create_sampler_generator(
+            rbm, None, dataset.test_xs[:100].shape, 1000)
+    else:
+        sampler_generator = create_sampler_generator(
+            rbm, dataset.test_xs[:100], None, 0)
+
+    trainer = RBMPretrainer(sess, dataset, rbm, decoder, sampler, vis_fn)
     rbm_dir = 'ptrbm_hid%d_%s' % (rbm.num_hid, str(train_config))
     output_dir = os.path.join(parent_dir, rbm_dir)
 
     train_config.dump_log(output_dir)
-    trainer.train(train_config, output_dir)
+    trainer.train(train_config, sampler_generator, output_dir)
     trainer.dump_log(output_dir)
 
     return output_dir
@@ -96,18 +81,12 @@ if __name__ == '__main__':
     rbm = RBM(encoded_dataset.x_shape[0], num_hid, None)
 
     # train_config = utils.TrainConfig(
-    #     lr=0.1, batch_size=100, num_epoch=20, use_pcd=False, cd_k=1)
+    #     lr=0.1, batch_size=100, num_epoch=20,
+    #     use_pcd=False, cd_k=1, draw_samples=False)
+    train_config = utils.TrainConfig(
+        lr=0.01, batch_size=100, num_epoch=20,
+        use_pcd=True, cd_k=1, draw_samples=True)
 
-    train_configs = [
-        utils.TrainConfig(lr=0.1, batch_size=100, num_epoch=100, use_pcd=False, cd_k=1),
-        utils.TrainConfig(lr=0.05, batch_size=100, num_epoch=100, use_pcd=False, cd_k=3),
-        utils.TrainConfig(lr=0.01, batch_size=100, num_epoch=200, use_pcd=False, cd_k=10),
-        utils.TrainConfig(lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=1),
-        utils.TrainConfig(lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
-    ]
     output_folder = os.path.join(ae_folder, 'test_pretrain')
-    utils.log_train_configs(train_configs, output_folder)
-
-    for config in train_configs:
-        pretrain(sess, rbm, encoded_dataset, ae.decoder,
-                 config, utils.vis_cifar10, output_folder)
+    pretrain(sess, rbm, encoded_dataset, ae.decoder,
+             train_config, utils.vis_cifar10, output_folder)
