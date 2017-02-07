@@ -19,36 +19,54 @@ import utils
 TRAIN_SCHEMES = {
     'ptrbm_scheme0': {
         'num_hid': 2000,
-        'force_retrain': False,
+        'force_retrain': True,
         'train_configs':[
-            TrainConfig(lr=0.1, batch_size=100, num_epoch=100, use_pcd=False, cd_k=1),
-            TrainConfig(lr=0.05, batch_size=100, num_epoch=100, use_pcd=False, cd_k=3),
-            TrainConfig(lr=0.01, batch_size=100, num_epoch=200, use_pcd=False, cd_k=10),
-            TrainConfig(lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=1),
-            TrainConfig(lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
+            TrainConfig(
+                lr=0.1, batch_size=100, num_epoch=100, use_pcd=False, cd_k=1),
+            TrainConfig(
+                lr=0.05, batch_size=100, num_epoch=100, use_pcd=False, cd_k=3),
+            TrainConfig(
+                lr=0.01, batch_size=100, num_epoch=200, use_pcd=False, cd_k=10),
+            TrainConfig(
+                lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=1),
+            TrainConfig(
+                lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
         ]},
     'ptrbm_scheme1': {
         'num_hid': 2000,
-        'force_retrain': False,
+        'force_retrain': True,
         'train_configs':[
-            TrainConfig(lr=0.1, batch_size=100, num_epoch=100, use_pcd=False, cd_k=1),
-            TrainConfig(lr=0.05, batch_size=100, num_epoch=100, use_pcd=False, cd_k=5),
-            TrainConfig(lr=0.02, batch_size=100, num_epoch=200, use_pcd=False, cd_k=10),
-            TrainConfig(lr=0.01, batch_size=100, num_epoch=500, use_pcd=False, cd_k=25),
-            TrainConfig(lr=0.005, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
-            TrainConfig(lr=0.002, batch_size=100, num_epoch=500, use_pcd=True, cd_k=10),
-            TrainConfig(lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25),
+            TrainConfig(
+                lr=0.1, batch_size=100, num_epoch=100, use_pcd=False, cd_k=1),
+            TrainConfig(
+                lr=0.05, batch_size=100, num_epoch=100, use_pcd=False, cd_k=5),
+            TrainConfig(
+                lr=0.02, batch_size=100, num_epoch=200, use_pcd=False, cd_k=10),
+            TrainConfig(
+                lr=0.01, batch_size=100, num_epoch=500, use_pcd=False, cd_k=25),
+            TrainConfig(
+                lr=0.005, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
+            TrainConfig(
+                lr=0.002, batch_size=100, num_epoch=500, use_pcd=True, cd_k=10),
+            TrainConfig(
+                lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25),
         ]},
     'ptrbm_scheme2':  {
         'num_hid': 4000,
         'force_retrain': False,
         'train_configs': [
-            TrainConfig(lr=0.1, batch_size=100, num_epoch=100, use_pcd=False, cd_k=1),
-            TrainConfig(lr=0.05, batch_size=100, num_epoch=200, use_pcd=False, cd_k=5),
-            TrainConfig(lr=0.01, batch_size=100, num_epoch=500, use_pcd=False, cd_k=10),
-            TrainConfig(lr=0.005, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
-            TrainConfig(lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=10),
-            TrainConfig(lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25),
+            TrainConfig(
+                lr=0.1, batch_size=100, num_epoch=100, use_pcd=False, cd_k=1),
+            TrainConfig(
+                lr=0.05, batch_size=100, num_epoch=200, use_pcd=False, cd_k=5),
+            TrainConfig(
+                lr=0.01, batch_size=100, num_epoch=500, use_pcd=False, cd_k=10),
+            TrainConfig(
+                lr=0.005, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
+            TrainConfig(
+                lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=10),
+            TrainConfig(
+                lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25),
         ]}
 }
 
