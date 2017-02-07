@@ -81,11 +81,9 @@ if __name__ == '__main__':
     rbm = RBM(encoded_dataset.x_shape[0], num_hid, None)
 
     # train_config = utils.TrainConfig(
-    #     lr=0.1, batch_size=100, num_epoch=20,
-    #     use_pcd=False, cd_k=1, draw_samples=False)
+    #     lr=0.1, batch_size=100, num_epoch=20, use_pcd=False, cd_k=1)
     train_config = utils.TrainConfig(
-        lr=0.01, batch_size=100, num_epoch=20,
-        use_pcd=True, cd_k=1, draw_samples=True)
+        lr=0.01, batch_size=100, num_epoch=20, use_pcd=True, cd_k=1)
 
     output_folder = os.path.join(ae_folder, 'test_pretrain')
     pretrain(sess, rbm, encoded_dataset, ae.decoder,
