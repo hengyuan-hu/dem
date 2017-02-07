@@ -13,7 +13,6 @@ class DEMTrainer(object):
         self.dataset = dataset
         self.dem = dem
         self.sampler = sampler # TODO: factor out as train's param?
-        # self.sampler_generator = sampler_generator # TODO:
         self.vis_fn = vis_fn
         self.x_data = tf.placeholder(tf.float32, [None]+list(self.x_shape))
         self.x_model = tf.placeholder(tf.float32, [None]+list(self.x_shape))
@@ -36,16 +35,12 @@ class DEMTrainer(object):
         # opt = tf.train.AdamOptimizer(train_config.lr)
         train_step = opt.minimize(cost)
         if self.sampler.is_persistent:
-            # TODO: use a Sampler base class to improve this
-            # use persistent chains
             sample_op, sampler_updates = self.sampler.sample()
         else:
-            # does not use persistent chains
             print '>>>>>>>> using cd, not pcd'
             sample_op, sampler_updates = self.sampler.sample(self.x_data)
 
         # prevent tf.init from resetting encoder
-        # K.tensorflow_backend._initialize_variables()
         utils.initialize_uninitialized_variables_by_keras()
         if hasattr(self.dem, 'ae'):
             l1_weights = self.dem.ae.encoder.layers[1].get_weights()
@@ -53,8 +48,8 @@ class DEMTrainer(object):
                    % (l1_weights[0].sum(), l1_weights[1].sum()))
 
         # helper graph for computing free energy
-        fe_x = tf.placeholder(tf.float32, [None]+list(self.x_shape))
-        fe_op = self.dem.free_energy(fe_x)
+        # fe_x = tf.placeholder(tf.float32, [None]+list(self.x_shape))
+        # fe_op = self.dem.free_energy(fe_x)
 
         for e in range(train_config.num_epoch):
             t = time.time()
@@ -77,9 +72,6 @@ class DEMTrainer(object):
 
                 feed_dict = {self.x_data: x_data, self.x_model: x_model}
                 loss_vals[b], _ = self.sess.run([loss, train_step], feed_dict)
-                # if b % 10 == 0:
-                #     print '\tAccept rate:', self.sess.run([self.sampler.avg_accept_rate])
-                #     print '\tStep size:', self.sess.run([self.sampler.stepsize])
 
             self.log.append('Epoch %d, Train Loss: %.4f' % (e+1, loss_vals.mean()))
             print self.log[-1]
@@ -87,8 +79,6 @@ class DEMTrainer(object):
             # weights_sum = weights_sum.sum()
             # print '\tweights sum:', weights_sum
             print '\tTime Taken: %ss' % (time.time() - t)
-            # print '\tAccept rate:', self.sess.run([self.sampler.avg_accept_rate])
-            # print '\tStep size:', self.sess.run([self.sampler.stepsize])
 
             if hasattr(self.dem, 'ae'):
                 l1_weights = self.dem.ae.encoder.layers[1].get_weights()
@@ -113,17 +103,12 @@ class DEMTrainer(object):
     def _draw_samples(self, sampler):
         """Use a new sampler to draw samples from the trained model.
         """
-        # sampler = self.sampler_generator()
-        # K.tensorflow_backend._initialize_variables()
         assert sampler.is_persistent
         utils.initialize_uninitialized_variables_by_keras()
 
         sample_op, sampler_updates = sampler.sample()
         for i in range(sampler.burnin):
             self.sess.run([sample_op, sampler_updates])
-            # if i % 10 == 0:
-            #     print '\tAccept rate:', self.sess.run([sampler.avg_accept_rate])
-            #     print '\tStep size:', self.sess.run([sampler.stepsize])
 
         samples, _ = self.sess.run([sample_op, sampler_updates])
         print 'in _draw_samples: samples min: %.4f, max: %.4f' \
