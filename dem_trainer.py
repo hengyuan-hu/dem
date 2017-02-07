@@ -9,11 +9,11 @@ import time
 
 
 class DEMTrainer(object):
-    def __init__(self, sess, dataset, dem, sampler, sampler_generator, vis_fn):
+    def __init__(self, sess, dataset, dem, sampler, vis_fn):
         self.dataset = dataset
         self.dem = dem
-        self.sampler = sampler
-        self.sampler_generator = sampler_generator # TODO: factor out as train's param?
+        self.sampler = sampler # TODO: factor out as train's param?
+        # self.sampler_generator = sampler_generator # TODO:
         self.vis_fn = vis_fn
         self.x_data = tf.placeholder(tf.float32, [None]+list(self.x_shape))
         self.x_model = tf.placeholder(tf.float32, [None]+list(self.x_shape))
@@ -24,7 +24,7 @@ class DEMTrainer(object):
     def x_shape(self):
         return self.dataset.x_shape
 
-    def train(self, train_config, folder):
+    def train(self, train_config, sampler_generator, folder):
         if folder and not os.path.exists(folder):
             os.makedirs(folder)
 
@@ -35,7 +35,7 @@ class DEMTrainer(object):
         opt = tf.train.GradientDescentOptimizer(train_config.lr)
         # opt = tf.train.AdamOptimizer(train_config.lr)
         train_step = opt.minimize(cost)
-        if hasattr(self.sampler, 'samples'):
+        if self.sampler.is_persistent:
             # TODO: use a Sampler base class to improve this
             # use persistent chains
             sample_op, sampler_updates = self.sampler.sample()
@@ -96,7 +96,7 @@ class DEMTrainer(object):
                        % (l1_weights[0].sum(), l1_weights[1].sum()))
 
             if (e+1) % 10 == 0 and folder:
-                samples = self._draw_samples()
+                samples = self._draw_samples(sampler_generator())
                 samples_path = os.path.join(folder, 'samples-epoch%d.png' % (e+1))
                 chain_path = os.path.join(folder, 'neg-samples-epoch%d.png' % (e+1))
                 # print 'saving imgs'
@@ -110,15 +110,16 @@ class DEMTrainer(object):
             f.write('\n'.join(self.log))
             f.write('\n')
 
-    def _draw_samples(self, burnin=1000):
+    def _draw_samples(self, sampler):
         """Use a new sampler to draw samples from the trained model.
         """
-        sampler = self.sampler_generator()
+        # sampler = self.sampler_generator()
         # K.tensorflow_backend._initialize_variables()
+        assert sampler.is_persistent
         utils.initialize_uninitialized_variables_by_keras()
 
         sample_op, sampler_updates = sampler.sample()
-        for i in range(burnin):
+        for i in range(sampler.burnin):
             self.sess.run([sample_op, sampler_updates])
             # if i % 10 == 0:
             #     print '\tAccept rate:', self.sess.run([sampler.avg_accept_rate])

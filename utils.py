@@ -12,12 +12,13 @@ CIFAR10_COLOR_STD_RGB  = np.array([63.0,  62.1,  66.7]).reshape(1, 1, 3)
 
 
 class TrainConfig(object):
-    def __init__(self, lr, batch_size, num_epoch, use_pcd, cd_k):
+    def __init__(self, lr, batch_size, num_epoch, use_pcd, cd_k, draw_samples):
         self.lr = lr
         self.batch_size = batch_size
         self.num_epoch = num_epoch
         self.use_pcd = use_pcd
         self.cd_k = cd_k
+        self.draw_samples = draw_samples # draw samples / reconstruct
 
     def __str__(self):
         if self.use_pcd:
