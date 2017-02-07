@@ -73,26 +73,27 @@ class RBM(object):
 
 class GibbsSampler(object):
     """Gibbs sampler for RBM to produce CD / PCD chain."""
-    def __init__(self, init_vals, rbm, cd_k):
+    def __init__(self, init_vals, rbm, cd_k, burnin):
         if init_vals is not None:
             self.samples = tf.Variable(init_vals, dtype=tf.float32)
         self.rbm = rbm
         self.cd_k = cd_k
+        self.burnin = burnin
 
     @property
-    def use_pcd(self):
+    def is_persistent(self):
         return hasattr(self, 'samples')
 
     def sample(self, x_data=None):
-        if not self.use_pcd:
+        if self.is_persistent:
+            new_samples = self.samples
+        else:
             assert x_data is not None, 'Provide x_data to use CD Gibbs sampler.'
             new_samples = x_data
-        else:
-            new_samples = self.samples
 
         for _ in range(self.cd_k):
             vprob, new_samples = self.rbm.vhv(new_samples)
-        updates = [self.samples.assign(new_samples)] if self.use_pcd else []
+        updates = [self.samples.assign(new_samples)] if self.is_persistent else []
         return vprob, updates
 
 
