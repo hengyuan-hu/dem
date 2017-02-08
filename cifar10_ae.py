@@ -42,19 +42,26 @@ def encode(x, use_noise, relu_max):
         print 'relu_max:', relu_max
         y = Activation(utils.scale_down(relu_max))(y)
         # y in [0, 1]
-        if use_noise:
-            y = GaussianNoise(0.2)(y)
-            y = Activation('relu')(y)
+        # if use_noise:
+        #     y = GaussianNoise(0.2)(y)
+        #     y = Activation('relu')(y)
 
     y = Reshape((latent_dim,))(y) # or Reshape([-1])(y) ?
     # latent_dim
     return y
 
 
-def decode(y, relu_max):
+def decode(y, use_noise, relu_max):
     assert len(y._keras_shape) == 2
-    latent_dim = y._keras_shape[-1]
-    x = Reshape((1, 1, latent_dim))(y)
+    assert use_noise == bool(relu_max), 'use noise means use relu max.'
+    if relu_max and use_noise:
+        x = GaussianNoise(0.2)(y)
+        x = Activation(utils.relu_n(1))(x)
+    else:
+        x = y
+
+    latent_dim = x._keras_shape[-1]
+    x = Reshape((1, 1, latent_dim))(x)
     # 1, 1, latent_dim
     if relu_max:
         print 'in decode: relu_max:', relu_max
@@ -97,26 +104,25 @@ if __name__ == '__main__':
 
     # ----------normal relu pretraining----------
     print 'Training model with normal relu'
-    folder = 'prod/cifar10_ae2_relu_inf'
-    ae = AutoEncoder(cifar10_dataset, encode, decode, None, folder)
-    ae.build_models()
-    # ae.build_models('test/test_cifar10_ae')
+    folder = 'prod/archive/cifar10_ae2_relu_inf'
+    # ae = AutoEncoder(cifar10_dataset, encode, decode, None, folder)
+    # ae.build_models()
 
     num_epoch = 160
     # no decay
     lr_schedule = utils.generate_decay_lr_schedule(num_epoch, 0.1, 1)
-    ae.train(128, num_epoch, lr_schedule)
-    ae.save_models()
-    ae.test_models(utils.vis_cifar10)
-    ae.log()
+    # ae.train(128, num_epoch, lr_schedule)
+    # ae.save_models()
+    # ae.test_models(utils.vis_cifar10)
+    # ae.log()
 
-    encoded_dataset = ae.encode(Cifar10Wrapper)
-    encoded_dataset.dump_to_h5(os.path.join(folder, 'encoded_cifar10.h5'))
-    encoded_dataset.plot_data_dist(os.path.join(folder, 'encoded_plot.png'))
+    # encoded_dataset = ae.encode(Cifar10Wrapper)
+    # encoded_dataset.dump_to_h5(os.path.join(folder, 'encoded_cifar10.h5'))
+    # encoded_dataset.plot_data_dist(os.path.join(folder, 'encoded_plot.png'))
 
     # ----------truncate relu and fine-tune----------
     print 'Training model with relu-%d' % RELU_MAX
-    new_folder = 'prod/cifar10_ae2_relu_%d' % RELU_MAX
+    new_folder = 'prod/cifar10_ae3_relu_%d' % RELU_MAX
     ae = AutoEncoder(cifar10_dataset, encode, decode, RELU_MAX, new_folder)
     ae.build_models(folder) # load previously trained ae
 
@@ -124,8 +130,8 @@ if __name__ == '__main__':
     # lr_schedule = utils.generate_decay_lr_schedule(num_epoch, 0.1, 1)
     ae.train(128, num_epoch, lr_schedule)
     ae.save_models()
-    ae.test_models(utils.vis_cifar10)
     ae.log()
+    ae.test_models(utils.vis_cifar10)
 
     encoded_dataset = ae.encode(Cifar10Wrapper)
     encoded_dataset.dump_to_h5(os.path.join(new_folder, 'encoded_cifar10.h5'))

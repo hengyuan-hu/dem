@@ -18,7 +18,7 @@ def _build_model(x_shape, use_noise, relu_max, encode_fn,
     if encode_fn:
         y = encode_fn(x, use_noise, relu_max)
     if decode_fn:
-        y = decode_fn(y, relu_max)
+        y = decode_fn(y, use_noise, relu_max)
     model = Model(x, y)
     if weights_file:
         assert os.path.exists(weights_file), '%s does not exist' % weights_file
@@ -65,7 +65,7 @@ class AutoEncoder(object):
             self.encode_fn, None, encoder_weights)
         code_shape = self.encoder.get_output_shape_at(-1)[1:]
         self.decoder = _build_model(
-            code_shape, False, self.relu_max,
+            code_shape, True, self.relu_max,
             None, self.decode_fn, decoder_weights)
 
     def train(self, batch_size, num_epoch, lr_schedule):
