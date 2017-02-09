@@ -76,7 +76,7 @@ if __name__ == '__main__':
     sess = utils.create_session()
     K.set_session(sess)
 
-    ae_folder = 'prod/cifar10_ae2_relu_%d' % cifar10_ae.RELU_MAX
+    ae_folder = 'prod/cifar10_ae3_relu_%d' % cifar10_ae.RELU_MAX
     ae = AutoEncoder(Cifar10Wrapper.load_default(),
                      cifar10_ae.encode, cifar10_ae.decode,
                      cifar10_ae.RELU_MAX, ae_folder)
@@ -86,7 +86,7 @@ if __name__ == '__main__':
         os.path.join(ae_folder, 'encoded_cifar10.h5'))
     assert len(encoded_dataset.x_shape) == 1
 
-    name = 'ptrbm_scheme2'
+    name = 'ptrbm_scheme1'
     scheme = TRAIN_SCHEMES[name]
     output_folder = os.path.join(ae_folder, name)
     if os.path.exists(output_folder) and not scheme['force_retrain']:
