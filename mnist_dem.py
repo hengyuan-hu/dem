@@ -22,7 +22,6 @@ class MnistDEM(object):
             self.zbias = tf.Variable(tf.zeros([1, self.num_z]))
             self.hbias = tf.Variable(tf.zeros([1, self.num_h]))
         else:
-            init_params = cPickle.load(open(params_file, 'rb'))
             with h5py.File(params_file, 'r') as hf:
                 self.weights = tf.Variable(np.array(hf.get('weights')))
                 self.zbias = tf.Variable(np.array(hf.get('zbias')))
