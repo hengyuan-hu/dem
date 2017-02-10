@@ -52,6 +52,7 @@ def encode(x, use_noise, relu_max):
 
 
 def decode(y, use_noise, relu_max):
+    print 'decoder input shape:', y._keras_shape
     assert len(y._keras_shape) == 2
     assert use_noise == bool(relu_max), 'use noise means use relu max.'
     if relu_max and use_noise:
@@ -69,9 +70,10 @@ def decode(y, use_noise, relu_max):
     # x = BN(mode=2, axis=3)(x) # this bn seems not good? NOT VERIFIED
 
     # why use 512 instead of 256 here?
-    batch_size  = tf.shape(x)[0]
+    batch_size = keras.backend.shape(x)[0]
     x = Deconv2D(512, 4, 4, output_shape=[batch_size, 4, 4, 512],
                  activation='relu', border_mode='same', subsample=(4,4))(x)
+
     x = BN(mode=2, axis=3)(x)
     # 4, 4, 512
     x = Deconv2D(256, 5, 5, output_shape=[batch_size, 8, 8, 256],
