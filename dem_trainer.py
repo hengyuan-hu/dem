@@ -118,5 +118,4 @@ class DEMTrainer(object):
     def _save_samples(self, samples, img_path):
         batch_size = len(samples)
         rows, cols = utils.factorize_number(batch_size)
-        assert rows * cols == batch_size, '# of samples should be a square'
         self.vis_fn(samples, rows, cols, img_path)
