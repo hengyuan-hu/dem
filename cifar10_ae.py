@@ -11,9 +11,9 @@ import utils
 
 
 RELU_MAX = 6
+LATENT_DIM = 1024
 
-
-def encode(x, use_noise, relu_max):
+def encode(x, relu_max):
     print 'encoder input shape:', x._keras_shape
     assert x._keras_shape[1:] == (32, 32, 3)
 
@@ -29,11 +29,10 @@ def encode(x, use_noise, relu_max):
     # 4, 4, 256
     assert y._keras_shape[1:] == (4, 4, 256), \
         '%s vs %s' % (y._keras_shape[1:], [4, 4, 256])
-    latent_dim = 1024
-    y = Conv2D(latent_dim, 4, 4, activation='linear',
+    y = Conv2D(LATENT_DIM, 4, 4, activation='linear',
                border_mode='same', subsample=(4,4))(y)
-    # 1, 1, latent_dim
-    if use_noise and not relu_max:
+    # 1, 1, LATENT_DIM
+    if not relu_max:
         print 'add noise and pretend relu_max will be:', RELU_MAX
         y = GaussianNoise(0.2 * RELU_MAX)(y)
 
@@ -42,28 +41,23 @@ def encode(x, use_noise, relu_max):
         print 'relu_max:', relu_max
         y = Activation(utils.scale_down(relu_max))(y)
         # y in [0, 1]
-        # if use_noise:
-        #     y = GaussianNoise(0.2)(y)
-        #     y = Activation('relu')(y)
 
-    y = Reshape((latent_dim,))(y) # or Reshape([-1])(y) ?
-    # latent_dim
+    y = Reshape((LATENT_DIM,))(y) # or Reshape([-1])(y) ?
+    # LATENT_DIM
     return y
 
 
-def decode(y, use_noise, relu_max):
+def decode(y, relu_max):
     print 'decoder input shape:', y._keras_shape
     assert len(y._keras_shape) == 2
-    assert use_noise == bool(relu_max), 'use noise means use relu max.'
-    if relu_max and use_noise:
+    if relu_max:
         x = GaussianNoise(0.2)(y)
         x = Activation(utils.relu_n(1))(x)
     else:
         x = y
 
-    latent_dim = x._keras_shape[-1]
-    x = Reshape((1, 1, latent_dim))(x)
-    # 1, 1, latent_dim
+    x = Reshape((1, 1, LATENT_DIM))(x)
+    # 1, 1, LATENT_DIM
     if relu_max:
         print 'in decode: relu_max:', relu_max
         x = Activation(utils.scale_up(relu_max))(x)
@@ -106,30 +100,28 @@ if __name__ == '__main__':
 
     # ----------normal relu pretraining----------
     print 'Training model with normal relu'
-    folder = 'prod/archive/cifar10_ae2_relu_inf'
-    # ae = AutoEncoder(cifar10_dataset, encode, decode, None, folder)
-    # ae.build_models()
+    folder = 'prod/cifar10_ae_%d_inf' % LATENT_DIM
+    ae = AutoEncoder(cifar10_dataset, encode, decode, None, folder)
+    ae.build_models()
 
-    num_epoch = 160
-    # no decay
-    lr_schedule = utils.generate_decay_lr_schedule(num_epoch, 0.1, 1)
-    # ae.train(128, num_epoch, lr_schedule)
-    # ae.save_models()
-    # ae.test_models(utils.vis_cifar10)
-    # ae.log()
+    num_epoch = 300
+    # 0.1 decay
+    lr_schedule = utils.generate_decay_lr_schedule(num_epoch, 0.1, 0.1)
+    ae.train(128, num_epoch, lr_schedule)
+    ae.save_models()
+    ae.test_models(utils.vis_cifar10)
+    ae.log()
 
-    # encoded_dataset = ae.encode(Cifar10Wrapper)
-    # encoded_dataset.dump_to_h5(os.path.join(folder, 'encoded_cifar10.h5'))
+    encoded_dataset = ae.encode(Cifar10Wrapper)
+    encoded_dataset.dump_to_h5(os.path.join(folder, 'encoded_cifar10.h5'))
     # encoded_dataset.plot_data_dist(os.path.join(folder, 'encoded_plot.png'))
 
     # ----------truncate relu and fine-tune----------
     print 'Training model with relu-%d' % RELU_MAX
-    new_folder = 'prod/cifar10_ae3_relu_%d' % RELU_MAX
+    new_folder = 'prod/cifar10_ae_%d_relu%d' % (LATENT_DIM, RELU_MAX)
     ae = AutoEncoder(cifar10_dataset, encode, decode, RELU_MAX, new_folder)
     ae.build_models(folder) # load previously trained ae
 
-    # num_epoch = 2
-    # lr_schedule = utils.generate_decay_lr_schedule(num_epoch, 0.1, 1)
     ae.train(128, num_epoch, lr_schedule)
     ae.save_models()
     ae.log()
@@ -137,4 +129,4 @@ if __name__ == '__main__':
 
     encoded_dataset = ae.encode(Cifar10Wrapper)
     encoded_dataset.dump_to_h5(os.path.join(new_folder, 'encoded_cifar10.h5'))
-    encoded_dataset.plot_data_dist(os.path.join(new_folder, 'encoded_plot.png'))
+    # encoded_dataset.plot_data_dist(os.path.join(new_folder, 'encoded_plot.png'))

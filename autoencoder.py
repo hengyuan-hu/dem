@@ -9,16 +9,16 @@ from keras.preprocessing.image import ImageDataGenerator
 import utils
 
 
-def _build_model(x_shape, use_noise, relu_max, encode_fn,
+def _build_model(x_shape, relu_max, encode_fn,
                  decode_fn, weights_file):
     assert encode_fn is not None or decode_fn is not None, \
         'At least provide one function to build the model.'
     x = Input(x_shape)
     y = x
     if encode_fn:
-        y = encode_fn(x, use_noise, relu_max)
+        y = encode_fn(x, relu_max)
     if decode_fn:
-        y = decode_fn(y, use_noise, relu_max)
+        y = decode_fn(y, relu_max)
     model = Model(x, y)
     if weights_file:
         assert os.path.exists(weights_file), '%s does not exist' % weights_file
@@ -63,13 +63,13 @@ class AutoEncoder(object):
             ae_weights = None
 
         self.ae = _build_model(
-            self.x_shape, True, self.relu_max,
+            self.x_shape, self.relu_max,
             self.encode_fn, self.decode_fn, ae_weights)
         self.encoder = _build_model(
-            self.x_shape, False, self.relu_max,
+            self.x_shape, self.relu_max,
             self.encode_fn, None, encoder_weights)
         self.decoder = _build_model(
-            self.z_shape, True, self.relu_max,
+            self.z_shape, self.relu_max,
             None, self.decode_fn, decoder_weights)
 
     def train(self, batch_size, num_epoch, lr_schedule):
