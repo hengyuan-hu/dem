@@ -7,10 +7,11 @@ import utils
 
 class RBM(object):
     def __init__(self, num_vis, num_hid, params_file):
-        self.num_vis = num_vis
-        self.num_hid = num_hid
 
         if not params_file:
+            assert num_vis and num_hid
+            self.num_vis = num_vis
+            self.num_hid = num_hid
             self.weights = tf.Variable(
                 tf.random_normal([self.num_vis, self.num_hid], 0.0, 0.01))
             self.vbias = tf.Variable(tf.zeros([1, self.num_vis]))
@@ -20,6 +21,7 @@ class RBM(object):
                 self.weights = tf.Variable(np.array(hf.get('weights')))
                 self.vbias = tf.Variable(np.array(hf.get('vbias')))
                 self.hbias = tf.Variable(np.array(hf.get('hbias')))
+            self.num_vis, self.num_hid = self.weights.get_shape().as_list()
 
     def save_model(self, tf_sess, folder, prefix):
         weights, vbias, hbias = tf_sess.run(
