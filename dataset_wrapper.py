@@ -8,9 +8,9 @@ import utils
 
 class DatasetWrapper(object):
     def __init__(self, train_xs, train_ys, test_xs, test_ys):
-        self.train_xs = train_xs
+        self.train_xs = train_xs.astype(np.float32)
         self.train_ys = train_ys
-        self.test_xs = test_xs
+        self.test_xs = test_xs.astype(np.float32)
         self.test_ys = test_ys
 
     @property
