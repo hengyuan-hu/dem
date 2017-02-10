@@ -24,7 +24,7 @@ def _build_model(x_shape, use_noise, relu_max, encode_fn,
         assert os.path.exists(weights_file), '%s does not exist' % weights_file
         model.load_weights(weights_file)
         print 'Model loaded from %s' % weights_file
-    return Model(x, y)
+    return model
 
 
 _ENCODER_WEIGHTS_FILE = 'encoder.h5'
@@ -48,6 +48,10 @@ class AutoEncoder(object):
     def x_shape(self):
         return self.dataset.x_shape
 
+    @property
+    def z_shape(self):
+        return self.encoder.get_output_shape_at(-1)[1:]
+
     def build_models(self, weights_folder=None):
         if weights_folder:
             encoder_weights = os.path.join(weights_folder, _ENCODER_WEIGHTS_FILE)
@@ -57,15 +61,15 @@ class AutoEncoder(object):
             encoder_weights = None
             decoder_weights = None
             ae_weights = None
+
         self.ae = _build_model(
             self.x_shape, True, self.relu_max,
             self.encode_fn, self.decode_fn, ae_weights)
         self.encoder = _build_model(
             self.x_shape, False, self.relu_max,
             self.encode_fn, None, encoder_weights)
-        code_shape = self.encoder.get_output_shape_at(-1)[1:]
         self.decoder = _build_model(
-            code_shape, True, self.relu_max,
+            self.z_shape, True, self.relu_max,
             None, self.decode_fn, decoder_weights)
 
     def train(self, batch_size, num_epoch, lr_schedule):
