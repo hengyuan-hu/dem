@@ -111,10 +111,9 @@ if __name__ == '__main__':
     ae = AutoEncoder(stl10_dataset, encode, decode, None, folder)
     ae.build_models()
 
-    num_epoch = 3
-    # 0.1 decay
-    lr_schedule = utils.generate_decay_lr_schedule(num_epoch, 0.1, 0.1)
-    ae.train(96, num_epoch, lr_schedule)
+    num_epoch = 150
+    lr_schedule = utils.generate_decay_lr_schedule(num_epoch, 0.1, 1)
+    ae.train(128, num_epoch, lr_schedule)
     ae.save_models()
     ae.test_models(utils.vis_stl10)
     ae.log()

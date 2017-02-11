@@ -33,7 +33,7 @@ TRAIN_SCHEMES = {
                 lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
         ]},
     'ptrbm_scheme1': {
-        'num_hid': 2000,
+        'num_hid': 4000,
         'force_retrain': True,
         'train_configs':[
             TrainConfig(
@@ -49,27 +49,8 @@ TRAIN_SCHEMES = {
             TrainConfig(
                 lr=0.002, batch_size=100, num_epoch=500, use_pcd=True, cd_k=10),
             TrainConfig(
-                lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25),
+                lr=0.001, batch_size=100, num_epoch=1000, use_pcd=True, cd_k=25),
         ]},
-    'ptrbm_scheme2':  {
-        'num_hid': 4000,
-        'force_retrain': False,
-        'train_configs': [
-            TrainConfig(
-                lr=0.1, batch_size=100, num_epoch=100, use_pcd=False, cd_k=1),
-            TrainConfig(
-                lr=0.05, batch_size=100, num_epoch=200, use_pcd=False, cd_k=5),
-            TrainConfig(
-                lr=0.01, batch_size=100, num_epoch=500, use_pcd=False, cd_k=10),
-            TrainConfig(
-                lr=0.005, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
-            TrainConfig(
-                lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=10),
-            TrainConfig(
-                lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25),
-            TrainConfig(
-                lr=0.001, batch_size=100, num_epoch=1000, use_pcd=True, cd_k=50),
-        ]}
 }
 
 
@@ -78,7 +59,9 @@ if __name__ == '__main__':
     sess = utils.create_session()
     K.set_session(sess)
 
-    ae_folder = 'prod/cifar10_ae3_relu_%d' % cifar10_ae.RELU_MAX
+    # ae_folder = 'prod/cifar10_ae3_relu_%d' % cifar10_ae.RELU_MAX
+    ae_folder = 'prod/cifar10_ae_%d_relu%d' % (
+        cifar10_ae.LATENT_DIM, cifar10_ae.RELU_MAX)
     ae = AutoEncoder(Cifar10Wrapper.load_default(),
                      cifar10_ae.encode, cifar10_ae.decode,
                      cifar10_ae.RELU_MAX, ae_folder)
@@ -88,9 +71,9 @@ if __name__ == '__main__':
         os.path.join(ae_folder, 'encoded_cifar10.h5'))
     assert len(encoded_dataset.x_shape) == 1
 
-    name = 'ptrbm_scheme2'
+    name = 'ptrbm_scheme1'
     scheme = TRAIN_SCHEMES[name]
-    output_folder = os.path.join(ae_folder, name)
+    output_folder = os.path.join(ae_folder, name+('_%d'%TRAIN_SCHEMES[name]['num_hid']))
     if os.path.exists(output_folder) and not scheme['force_retrain']:
         print '%s exists, skip training.' % name
         exit()
