@@ -67,6 +67,14 @@ class DEM(object):
         cost = tf.reduce_mean(tf.square(target_x - x))
         return cost
 
+    def save_model(self, sess, output_dir, prefix):
+        encoder_weights_file = os.path.join(output_dir, prefix+'encoder.h5')
+        decoder_weights_file = os.path.join(output_dir, prefix+'decoder.h5')
+        self.encoder.save_weights(encoder_weights_file)
+        self.decoder.save_weights(decoder_weights_file)
+        self.rbm.save_model(sess, output_dir, prefix)
+        print 'model save at', encoder_weights_file
+
 
 # TODO: this is duplicated
 def create_sampler_generator(rbm, init_vals, num_chain, burnin):
@@ -111,7 +119,7 @@ if __name__ == '__main__':
     dem = DEM(ae, rbm)
 
     train_config = utils.TrainConfig(
-        lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25)
+        lr=0.005, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25)
     sampler_generator = create_sampler_generator(rbm, None, 100, 1000)
     # pcd sampler
     chain_shape = (train_config.batch_size, rbm.num_vis)
