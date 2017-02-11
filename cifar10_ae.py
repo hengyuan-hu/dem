@@ -67,7 +67,6 @@ def decode(y, relu_max):
     batch_size = keras.backend.shape(x)[0]
     x = Deconv2D(512, 4, 4, output_shape=[batch_size, 4, 4, 512],
                  activation='relu', border_mode='same', subsample=(4,4))(x)
-
     x = BN(mode=2, axis=3)(x)
     # 4, 4, 512
     x = Deconv2D(256, 5, 5, output_shape=[batch_size, 8, 8, 256],
@@ -83,7 +82,7 @@ def decode(y, relu_max):
     x = BN(mode=2, axis=3)(x)
     # 32, 32, 64
     x = Deconv2D(3, 5, 5, output_shape=(batch_size, 32, 32, 3),
-                 activation='linear', border_mode='same', subsample=(1, 1))(x)
+                 activation='linear', border_mode='same', subsample=(1,1))(x)
     # 32, 32, 3
     x = BN(mode=2, axis=3)(x)
     return x
