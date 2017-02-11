@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 import utils
+import stl_dataset
 
 
 class DatasetWrapper(object):
@@ -96,6 +97,17 @@ class Cifar10Wrapper(DatasetWrapper):
         train_xs = utils.preprocess_cifar10(train_xs)
         test_xs = utils.preprocess_cifar10(test_xs)
         return cls(train_xs, train_ys, test_xs, test_ys)
+
+
+class STL10Wrapper(DatasetWrapper):
+    @classmethod
+    def load_default(cls):
+        train_xs = stl_dataset.read_all_images(stl_dataset.UNLABELED_DATA_PATH)
+        train_ys = np.zeros(len(train_xs), dtype=np.uint8)
+        test_xs = stl_dataset.read_all_images(stl_dataset.DATA_PATH)
+        test_ys = stl_dataset.read_labels(stl_dataset.LABEL_PATH)
+        return cls(train_xs, train_ys, test_xs, test_ys)
+
 
 if __name__ == '__main__':
     mnist_dataset = MnistWrapper.load_default()
