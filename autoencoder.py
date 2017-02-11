@@ -27,6 +27,9 @@ def _build_model(x_shape, relu_max, encode_fn,
     return model
 
 
+build_model = _build_model
+
+
 _ENCODER_WEIGHTS_FILE = 'encoder.h5'
 _DECODER_WEIGHTS_FILE = 'decoder.h5'
 _AE_WEIGHTS_FILE = 'ae.h5'
