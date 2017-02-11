@@ -67,6 +67,8 @@ TRAIN_SCHEMES = {
                 lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=10),
             TrainConfig(
                 lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25),
+            TrainConfig(
+                lr=0.001, batch_size=100, num_epoch=1000, use_pcd=True, cd_k=50),
         ]}
 }
 
@@ -86,7 +88,7 @@ if __name__ == '__main__':
         os.path.join(ae_folder, 'encoded_cifar10.h5'))
     assert len(encoded_dataset.x_shape) == 1
 
-    name = 'ptrbm_scheme1'
+    name = 'ptrbm_scheme2'
     scheme = TRAIN_SCHEMES[name]
     output_folder = os.path.join(ae_folder, name)
     if os.path.exists(output_folder) and not scheme['force_retrain']:
@@ -99,4 +101,4 @@ if __name__ == '__main__':
     for config in train_configs:
         rbm_dir = pretrain(sess, rbm, encoded_dataset, ae.decoder,
                            config, utils.vis_cifar10, output_folder)
-        rbm.save_model(sess, rbm_dir, 'epoch_%d_' % config.num_epoch)
+        # rbm.save_model(sess, rbm_dir, 'epoch_%d_' % config.num_epoch)
