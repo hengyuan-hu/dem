@@ -9,6 +9,7 @@ import stl_dataset
 
 class DatasetWrapper(object):
     def __init__(self, train_xs, train_ys, test_xs, test_ys):
+        """DO NOT do any normalization in this function"""
         self.train_xs = train_xs.astype(np.float32)
         self.train_ys = train_ys
         self.test_xs = test_xs.astype(np.float32)
@@ -106,6 +107,9 @@ class STL10Wrapper(DatasetWrapper):
         train_ys = np.zeros(len(train_xs), dtype=np.uint8)
         test_xs = stl_dataset.read_all_images(stl_dataset.DATA_PATH)
         test_ys = stl_dataset.read_labels(stl_dataset.LABEL_PATH)
+
+        train_xs = utils.preprocess_stl10(train_xs)
+        test_xs = utils.preprocess_stl10(test_xs)
         return cls(train_xs, train_ys, test_xs, test_ys)
 
 

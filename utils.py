@@ -11,6 +11,10 @@ CIFAR10_COLOR_MEAN_RGB = np.array([125.3, 123.0, 113.9]).reshape(1, 1, 3)
 CIFAR10_COLOR_STD_RGB  = np.array([63.0,  62.1,  66.7]).reshape(1, 1, 3)
 
 
+STL10_COLOR_MEAN_RGB = np.array([112.4, 109.0, 98.4]).reshape(1, 1, 3)
+STL10_COLOR_STD_RGB = np.array([ 68.5,  66.6,  68.5]).reshape(1, 1, 3)
+
+
 class TrainConfig(object):
     def __init__(self, lr, batch_size, num_epoch, use_pcd, cd_k):
         self.lr = lr
@@ -145,8 +149,35 @@ def preprocess_cifar10(dataset):
     return dataset
 
 
+def preprocess_stl10(dataset):
+    dataset = (dataset - STL10_COLOR_MEAN_RGB) / STL10_COLOR_STD_RGB
+    return dataset
+
+
 def vis_cifar10(imgs, rows, cols, output_name):
     imgs = imgs * CIFAR10_COLOR_STD_RGB + CIFAR10_COLOR_MEAN_RGB
+    imgs = np.maximum(np.zeros(imgs.shape), imgs)
+    imgs = np.minimum(np.ones(imgs.shape)*255, imgs)
+    # print imgs.shape
+    imgs = imgs.astype(np.uint8)
+
+    assert imgs.shape[0] == rows * cols
+    f, axarr = plt.subplots(rows, cols, figsize=(32, 32))
+    for r in range(rows):
+        for c in range(cols):
+            img = imgs[r * cols + c]
+            axarr[r][c].imshow(img)
+            axarr[r][c].set_axis_off()
+    f.subplots_adjust(hspace=0.2, wspace=0.2)
+    if output_name is None:
+        plt.show()
+    else:
+        plt.savefig(output_name)
+    plt.close()
+
+
+def vis_stl10(imgs, rows, cols, output_name):
+    imgs = imgs * STL10_COLOR_STD_RGB + STL10_COLOR_MEAN_RGB
     imgs = np.maximum(np.zeros(imgs.shape), imgs)
     imgs = np.minimum(np.ones(imgs.shape)*255, imgs)
     # print imgs.shape

@@ -143,3 +143,4 @@ if __name__ == "__main__":
 
     from dataset_wrapper import STL10Wrapper
     dataset = STL10Wrapper.load_default()
+    dataset.dump_to_h5('data/stl10.h5')
