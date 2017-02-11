@@ -6,13 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-if sys.version_info >= (3, 0, 0):
-    import urllib.request as urllib # ugly but works
-else:
-    import urllib
-
-print(sys.version_info)
-
 # image shape
 HEIGHT = 96
 WIDTH = 96
@@ -123,6 +116,11 @@ def download_and_extract():
 
 
 if __name__ == "__main__":
+    if sys.version_info >= (3, 0, 0):
+        import urllib.request as urllib # ugly but works
+    else:
+        import urllib
+    print(sys.version_info)
     # download data if needed
     download_and_extract()
 
