@@ -91,7 +91,8 @@ class DEMTrainer(object):
                 chain_path = os.path.join(folder, 'neg-samples-epoch%d.png' % (e+1))
                 # print 'saving imgs'
                 self._save_samples(samples, samples_path)
-                # self.dem.save_model(self.sess, folder, 'epoch_%d_' % (e+1))
+            if (e+1) % 100 == 0 and folder:
+                self.dem.save_model(self.sess, folder, 'epoch_%d_' % (e+1))
                 # self._save_samples(x_model, chain_path)
 
     def dump_log(self, folder):

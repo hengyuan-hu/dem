@@ -144,7 +144,7 @@ class DEMTrainer(object):
                 print 'encoder L1 weights sum: %s, decoder L1 weights sum: %s' \
                     % (el1_weights[0].sum(), dl1_weights[0].sum())
 
-            if (e+1) % 1 == 0:
+            if (e+1) % 10 == 0:
                 samples = self._draw_samples(sampler_generator())
                 samples_path = os.path.join(
                     self.output_dir, 'samples-epoch%d.png' % (e+1))
@@ -152,7 +152,9 @@ class DEMTrainer(object):
                     self.output_dir, 'neg-samples-epoch%d.png' % (e+1))
                 # print 'saving imgs'
                 self._save_samples(samples, samples_path)
-                # self.dem.save_model(self.sess, output_dir, 'epoch_%d_' % (e+1))
+            if (e+1) % 100 == 0:
+                self.dem.save_model(self.sess, self.output_dir, 'epoch_%d_' % (e+1))
+                self.dump_log()
                 # self._save_samples(x_model, chain_path)
 
     def dump_log(self, output_dir=None):
