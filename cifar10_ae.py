@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import os
 import keras
-from keras.layers import Input, Activation, Reshape
+from keras.layers import Input, Activation, Reshape, CustomDropout
 from keras.layers import Convolution2D as Conv2D
 from keras.layers import Deconvolution2D as Deconv2D
 from keras.layers.noise import GaussianNoise
@@ -13,12 +13,15 @@ import utils
 RELU_MAX = 6
 LATENT_DIM = 1024
 
+
 def encode(x, relu_max):
     print 'encoder input shape:', x._keras_shape
     assert x._keras_shape[1:] == (32, 32, 3)
+    batch_size = keras.backend.shape(x)[0]
 
+    y = CustomDropout(0.05, noise_shape=(batch_size, 32, 32, 1))(x)
     # 32, 32, 3
-    y = Conv2D(64, 3, 3, activation='relu', border_mode='same', subsample=(2,2))(x)
+    y = Conv2D(64, 3, 3, activation='relu', border_mode='same', subsample=(2,2))(y)
     y = BN(mode=2, axis=3)(y)
     # 16, 16, 64
     y = Conv2D(128, 3, 3, activation='relu', border_mode='same', subsample=(2,2))(y)
@@ -52,7 +55,7 @@ def decode(y, relu_max):
     assert len(y._keras_shape) == 2
     if relu_max:
         x = GaussianNoise(0.2)(y)
-        x = Activation(utils.relu_n(1))(x)
+        # x = Activation(utils.relu_n(1))(x)
     else:
         x = y
 
@@ -99,7 +102,7 @@ if __name__ == '__main__':
 
     # ----------normal relu pretraining----------
     print 'Training model with normal relu'
-    folder = 'prod/cifar10_ae_%d_inf' % LATENT_DIM
+    folder = 'prod/cifar10_dae%d_inf' % LATENT_DIM
     ae = AutoEncoder(cifar10_dataset, encode, decode, None, folder)
     ae.build_models()
 
@@ -117,7 +120,7 @@ if __name__ == '__main__':
 
     # ----------truncate relu and fine-tune----------
     print 'Training model with relu-%d' % RELU_MAX
-    new_folder = 'prod/cifar10_ae_%d_relu%d' % (LATENT_DIM, RELU_MAX)
+    new_folder = 'prod/cifar10_dae%d_relu%d' % (LATENT_DIM, RELU_MAX)
     ae = AutoEncoder(cifar10_dataset, encode, decode, RELU_MAX, new_folder)
     ae.build_models(folder) # load previously trained ae
 
