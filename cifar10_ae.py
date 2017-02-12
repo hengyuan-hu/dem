@@ -18,10 +18,8 @@ def encode(x, relu_max):
     print 'encoder input shape:', x._keras_shape
     assert x._keras_shape[1:] == (32, 32, 3)
     batch_size = keras.backend.shape(x)[0]
-
-    y = CustomDropout(0.05, noise_shape=(batch_size, 32, 32, 1))(x)
     # 32, 32, 3
-    y = Conv2D(64, 3, 3, activation='relu', border_mode='same', subsample=(2,2))(y)
+    y = Conv2D(64, 3, 3, activation='relu', border_mode='same', subsample=(2,2))(x)
     y = BN(mode=2, axis=3)(y)
     # 16, 16, 64
     y = Conv2D(128, 3, 3, activation='relu', border_mode='same', subsample=(2,2))(y)
@@ -102,7 +100,7 @@ if __name__ == '__main__':
 
     # ----------normal relu pretraining----------
     print 'Training model with normal relu'
-    folder = 'prod/cifar10_dae%d_inf' % LATENT_DIM
+    folder = 'prod/cifar10_new_ae%d_inf' % LATENT_DIM
     ae = AutoEncoder(cifar10_dataset, encode, decode, None, folder)
     ae.build_models()
 
@@ -120,7 +118,7 @@ if __name__ == '__main__':
 
     # ----------truncate relu and fine-tune----------
     print 'Training model with relu-%d' % RELU_MAX
-    new_folder = 'prod/cifar10_dae%d_relu%d' % (LATENT_DIM, RELU_MAX)
+    new_folder = 'prod/cifar10_new_ae%d_relu%d' % (LATENT_DIM, RELU_MAX)
     ae = AutoEncoder(cifar10_dataset, encode, decode, RELU_MAX, new_folder)
     ae.build_models(folder) # load previously trained ae
 
