@@ -11,7 +11,7 @@ import utils
 
 
 RELU_MAX = 6
-LATENT_DIM = 4096
+LATENT_DIM = 1024
 
 def encode(x, relu_max):
     print 'encoder input shape:', x._keras_shape

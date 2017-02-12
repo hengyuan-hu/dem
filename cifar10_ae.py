@@ -11,7 +11,7 @@ import utils
 
 
 RELU_MAX = 6
-LATENT_DIM = 1024
+LATENT_DIM = 512
 
 
 def encode(x, relu_max):
