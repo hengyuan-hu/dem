@@ -151,7 +151,7 @@ if __name__ == '__main__':
     sampler = GibbsSampler(random_init, rbm, train_config.cd_k, None)
     cd_sampler = GibbsSampler(None, rbm, 1, None)
 
-    output_dir = os.path.join(ae_folder, 'test_up_down_with_cd_lrx10')
+    output_dir = os.path.join(ae_folder, 'test_cbp_up_down')
     dem_trainer = DEMTrainer(sess, dataset, dem, utils.vis_cifar10, output_dir)
     # dem_trainer.test_decode()
     # dem_trainer._test_init()

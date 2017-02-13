@@ -51,13 +51,11 @@ def encode(x, relu_max):
 def decode(y, relu_max):
     print 'decoder input shape:', y._keras_shape
     assert len(y._keras_shape) == 2
-    # if relu_max:
-    #     x = GaussianNoise(0.2)(y)
-    #     # x = Activation(utils.relu_n(1))(x)
-    # else:
-    #     x = y
-    print '\n!!!>>>WARNING: NO NOISE IN DECODER<<<!!!\n'
-    x = y
+    if relu_max:
+        x = GaussianNoise(0.2)(y)
+        # x = Activation(utils.relu_n(1))(x)
+    else:
+        x = y
 
     x = Reshape((1, 1, LATENT_DIM))(x)
     # 1, 1, LATENT_DIM

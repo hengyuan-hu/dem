@@ -67,13 +67,13 @@ class DEMTrainer(object):
         encoder_target_z = tf.placeholder(tf.float32, self.z_shape)
         encoder_cost = self.dem.encoder_cost(encoder_x, encoder_target_z)
         opt_encoder = tf.train.GradientDescentOptimizer(
-            train_config.lr * 10).minimize(encoder_cost)
+            train_config.lr).minimize(encoder_cost)
 
         decoder_z = tf.placeholder(tf.float32, self.z_shape)
         decoder_target_x = tf.placeholder(tf.float32, self.x_shape)
         decoder_cost = self.dem.decoder_cost(decoder_z, decoder_target_x)
         opt_decoder = tf.train.GradientDescentOptimizer(
-            train_config.lr * 10).minimize(decoder_cost)
+            train_config.lr).minimize(decoder_cost)
 
         rbm_z_data = tf.placeholder(tf.float32, self.z_shape)
         rbm_z_model = tf.placeholder(tf.float32, self.z_shape)
@@ -110,7 +110,7 @@ class DEMTrainer(object):
                                        :(b+1) * train_config.batch_size]
                 # upward pass
                 z_data = self.dem.encoder.predict(x_data)
-                cd_z_data = self.sess.run(cd_op, {rbm_z_data: z_data})
+                # cd_z_data = self.sess.run(cd_op, {rbm_z_data: z_data})
                 # run sampler, get z_model
                 feed_dict = {} if sampler.is_persistent else {rbm_z_data: z_data}
                 z_model, _ = self.sess.run([sample_op, sampler_updates], feed_dict)
@@ -118,8 +118,8 @@ class DEMTrainer(object):
                 x_model = self.dem.decoder.predict(z_model)
 
                 # update decoder weights
-                feed_dict = {decoder_z: cd_z_data, decoder_target_x: x_data,
-                             self.dem.decoder.input: cd_z_data, # for batch_size
+                feed_dict = {decoder_z: z_data, decoder_target_x: x_data,
+                             self.dem.decoder.input: z_data, # for batch_size
                              K.learning_phase(): 1} # for noise
                 loss_vals['decoder'][b], _ = self.sess.run(
                     [decoder_cost, opt_decoder], feed_dict)
