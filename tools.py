@@ -26,6 +26,6 @@ def evalute_encoder(encode_fn, relu_max, weights_file,
 
 
 if __name__ == '__main__':
-    evalute_encoder(cifar10_ae.encode, cifar10_ae.RELU_MAX,
-                    'prod/cifar10_ae3_relu_6/test_up_down/epoch_500_encoder.h5',
+    evalute_encoder(cifar10_ae.encode, 6,
+                    'prod/cifar10_new_ae768_relu6/encoder.h5',
                     Cifar10Wrapper.load_default(), Cifar10Wrapper)
