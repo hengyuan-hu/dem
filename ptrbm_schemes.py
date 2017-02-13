@@ -33,7 +33,7 @@ TRAIN_SCHEMES = {
                 lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
         ]},
     'ptrbm_scheme1': {
-        'num_hid': 1000,
+        'num_hid': 2000,
         'force_retrain': True,
         'train_configs':[
             TrainConfig(
@@ -43,13 +43,13 @@ TRAIN_SCHEMES = {
             TrainConfig(
                 lr=0.02, batch_size=100, num_epoch=200, use_pcd=False, cd_k=10),
             TrainConfig(
-                lr=0.01, batch_size=100, num_epoch=500, use_pcd=False, cd_k=25),
+                lr=0.01, batch_size=100, num_epoch=200, use_pcd=False, cd_k=25),
             TrainConfig(
                 lr=0.005, batch_size=100, num_epoch=500, use_pcd=True, cd_k=5),
             TrainConfig(
                 lr=0.002, batch_size=100, num_epoch=500, use_pcd=True, cd_k=10),
             TrainConfig(
-                lr=0.001, batch_size=100, num_epoch=1000, use_pcd=True, cd_k=25),
+                lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25),
         ]},
 }
 
@@ -59,9 +59,9 @@ if __name__ == '__main__':
     sess = utils.create_session()
     K.set_session(sess)
 
-    # ae_folder = 'prod/cifar10_ae3_relu_%d' % cifar10_ae.RELU_MAX
-    ae_folder = 'prod/cifar10_new_ae%d_relu%d' % (
-        cifar10_ae.LATENT_DIM, cifar10_ae.RELU_MAX)
+    ae_folder = 'prod/cifar10_ae2_relu_%d' % cifar10_ae.RELU_MAX
+    # ae_folder = 'prod/cifar10_new_ae%d_relu%d' % (
+    #     cifar10_ae.LATENT_DIM, cifar10_ae.RELU_MAX)
     ae = AutoEncoder(Cifar10Wrapper.load_default(),
                      cifar10_ae.encode, cifar10_ae.decode,
                      cifar10_ae.RELU_MAX, ae_folder)

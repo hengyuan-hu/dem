@@ -11,7 +11,7 @@ import utils
 
 
 RELU_MAX = 6
-LATENT_DIM = 512
+LATENT_DIM = 1024
 
 
 def encode(x, relu_max):
@@ -104,9 +104,9 @@ if __name__ == '__main__':
     ae = AutoEncoder(cifar10_dataset, encode, decode, None, folder)
     ae.build_models()
 
-    num_epoch = 300
-    # 0.1 decay
-    lr_schedule = utils.generate_decay_lr_schedule(num_epoch, 0.1, 0.1)
+    num_epoch = 200
+    # no decay
+    lr_schedule = utils.generate_decay_lr_schedule(num_epoch, 0.1, 1)
     ae.train(128, num_epoch, lr_schedule)
     ae.save_models()
     ae.test_models(utils.vis_cifar10)
@@ -114,7 +114,7 @@ if __name__ == '__main__':
 
     encoded_dataset = ae.encode(Cifar10Wrapper)
     encoded_dataset.dump_to_h5(os.path.join(folder, 'encoded_cifar10.h5'))
-    # encoded_dataset.plot_data_dist(os.path.join(folder, 'encoded_plot.png'))
+    encoded_dataset.plot_data_dist(os.path.join(folder, 'encoded_plot.png'))
 
     # ----------truncate relu and fine-tune----------
     print 'Training model with relu-%d' % RELU_MAX
@@ -129,4 +129,4 @@ if __name__ == '__main__':
 
     encoded_dataset = ae.encode(Cifar10Wrapper)
     encoded_dataset.dump_to_h5(os.path.join(new_folder, 'encoded_cifar10.h5'))
-    # encoded_dataset.plot_data_dist(os.path.join(new_folder, 'encoded_plot.png'))
+    encoded_dataset.plot_data_dist(os.path.join(new_folder, 'encoded_plot.png'))
