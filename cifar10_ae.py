@@ -17,7 +17,7 @@ LATENT_DIM = 1024
 def encode(x, relu_max):
     print 'encoder input shape:', x._keras_shape
     assert x._keras_shape[1:] == (32, 32, 3)
-    batch_size = keras.backend.shape(x)[0]
+
     # 32, 32, 3
     y = Conv2D(64, 3, 3, activation='relu', border_mode='same', subsample=(2,2))(x)
     y = BN(mode=2, axis=3)(y)
@@ -51,11 +51,13 @@ def encode(x, relu_max):
 def decode(y, relu_max):
     print 'decoder input shape:', y._keras_shape
     assert len(y._keras_shape) == 2
-    if relu_max:
-        x = GaussianNoise(0.2)(y)
-        # x = Activation(utils.relu_n(1))(x)
-    else:
-        x = y
+    # if relu_max:
+    #     x = GaussianNoise(0.2)(y)
+    #     # x = Activation(utils.relu_n(1))(x)
+    # else:
+    #     x = y
+    print '\n!!!>>>WARNING: NO NOISE IN DECODER<<<!!!\n'
+    x = y
 
     x = Reshape((1, 1, LATENT_DIM))(x)
     # 1, 1, LATENT_DIM

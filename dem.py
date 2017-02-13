@@ -1,15 +1,39 @@
 import tensorflow as tf
+from autoencoder import build_model
+from rbm import RBM
 
 
 class DEM(object):
     """Compositional model consists of encoder, assoc memory(rbm), decoder."""
-    def __init__(self, ae, rbm):
-        self.ae = ae
+    def __init__(self, ae, rbm, encoder=None, decoder=None):
+        # self.ae = ae
+        if ae:
+            self.encoder = ae.encoder
+            self.decoder = ae.decoder
+        else:
+            assert encoder is not None and decoder is not None
+            self.encoder = encoder
+            self.decoder = decoder
+
         self.rbm = rbm
 
-        assert len(self.ae.encoder.get_output_shape_at(-1)) == 2, \
+        assert len(self.encoder.get_output_shape_at(-1)) == 2, \
             'Latent (z) space must be 1D.'
-        assert self.ae.encoder.get_output_shape_at(-1)[-1] == self.num_z
+        assert self.encoder.get_output_shape_at(-1)[-1] == self.num_z
+
+    @classmethod
+    def load_from_param_files(cls, x_shape, relu_max,
+                              encode_fn, encoder_weights,
+                              decode_fn, decoder_weights,
+                              rbm_weights):
+        encoder = build_model(
+            x_shape, relu_max, encode_fn, None, encoder_weights)
+        z_shape = encoder.get_output_shape_at(-1)[1:]
+        decoder = build_model(
+            z_shape, relu_max, None, decode_fn, decoder_weights)
+        rbm = RBM(None, None, rbm_weights)
+        assert z_shape[0] == rbm.num_vis, ('%s vs %s' % z_shape[0], rbm.num_vis)
+        return cls(None, rbm, encoder, decoder)
 
     @property
     def num_z(self):
@@ -19,13 +43,13 @@ class DEM(object):
     def num_h(self):
         return self.rbm.num_hid
 
-    @property
-    def encoder(self):
-        return self.ae.encoder
+    # @property
+    # def encoder(self):
+    #     return self.ae.encoder
 
-    @property
-    def decoder(self):
-        return self.ae.decoder
+    # @property
+    # def decoder(self):
+    #     return self.ae.decoder
 
     def free_energy(self, z):
         """build the graph to compute free energy given z :: placeholder"""
@@ -125,9 +149,10 @@ if __name__ == '__main__':
     chain_shape = (train_config.batch_size, rbm.num_vis)
     random_init = np.random.normal(0.0, 1.0, chain_shape)
     sampler = GibbsSampler(random_init, rbm, train_config.cd_k, None)
+    cd_sampler = GibbsSampler(None, rbm, 1, None)
 
-    output_dir = os.path.join(ae_folder, 'test_up_down')
+    output_dir = os.path.join(ae_folder, 'test_up_down_with_cd_lrx10')
     dem_trainer = DEMTrainer(sess, dataset, dem, utils.vis_cifar10, output_dir)
     # dem_trainer.test_decode()
     # dem_trainer._test_init()
-    dem_trainer.train(train_config, sampler, sampler_generator)
+    dem_trainer.train(train_config, sampler, cd_sampler, sampler_generator)
