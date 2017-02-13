@@ -61,7 +61,7 @@ class DEMTrainer(object):
         output_path =  os.path.join(self.output_dir, 'test_decode.png')
         self._save_samples(x, output_path)
 
-    def train(self, train_config, sampler, cd_sampler, sampler_generator):
+    def train(self, train_config, sampler, sampler_generator):
         # building graphs
         encoder_x = tf.placeholder(tf.float32, self.x_shape, name='encoder_x')
         encoder_target_z = tf.placeholder(tf.float32, self.z_shape)
@@ -88,8 +88,6 @@ class DEMTrainer(object):
             print '>>>>>>>> using cd-%d' % train_config.cd_k
             sample_op, sampler_updates = sampler.sample(rbm_z_data)
 
-        cd_op, _ = cd_sampler.sample(rbm_z_data)
-
         # finish building all graphs, init only new variables
         utils.initialize_uninitialized_variables_by_keras()
         # self._test_init()
@@ -110,7 +108,6 @@ class DEMTrainer(object):
                                        :(b+1) * train_config.batch_size]
                 # upward pass
                 z_data = self.dem.encoder.predict(x_data)
-                # cd_z_data = self.sess.run(cd_op, {rbm_z_data: z_data})
                 # run sampler, get z_model
                 feed_dict = {} if sampler.is_persistent else {rbm_z_data: z_data}
                 z_model, _ = self.sess.run([sample_op, sampler_updates], feed_dict)

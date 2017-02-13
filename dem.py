@@ -43,14 +43,6 @@ class DEM(object):
     def num_h(self):
         return self.rbm.num_hid
 
-    # @property
-    # def encoder(self):
-    #     return self.ae.encoder
-
-    # @property
-    # def decoder(self):
-    #     return self.ae.decoder
-
     def free_energy(self, z):
         """build the graph to compute free energy given z :: placeholder"""
         return self.rbm.free_energy(z)
@@ -151,7 +143,7 @@ if __name__ == '__main__':
     sampler = GibbsSampler(random_init, rbm, train_config.cd_k, None)
     cd_sampler = GibbsSampler(None, rbm, 1, None)
 
-    output_dir = os.path.join(ae_folder, 'test_cbp_up_down')
+    output_dir = os.path.join(ae_folder, 'test_up_down')
     dem_trainer = DEMTrainer(sess, dataset, dem, utils.vis_cifar10, output_dir)
     # dem_trainer.test_decode()
     # dem_trainer._test_init()
