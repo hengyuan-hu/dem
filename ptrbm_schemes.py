@@ -8,12 +8,12 @@ from rbm_pretrain import RBMPretrainer, pretrain
 
 
 # from dem_trainer import DEMTrainer
-from dataset_wrapper import Cifar10Wrapper
+from dataset_wrapper import Cifar10Wrapper, STL10Wrapper
 from rbm import RBM# , GibbsSampler
 from autoencoder import AutoEncoder
 import cifar10_ae
+import stl_ae
 import utils
-
 
 
 TRAIN_SCHEMES = {
@@ -59,16 +59,26 @@ if __name__ == '__main__':
     sess = utils.create_session()
     K.set_session(sess)
 
-    ae_folder = 'prod/cifar10_ae2_relu_%d' % cifar10_ae.RELU_MAX
-    # ae_folder = 'prod/cifar10_new_ae%d_relu%d' % (
-    #     cifar10_ae.LATENT_DIM, cifar10_ae.RELU_MAX)
-    ae = AutoEncoder(Cifar10Wrapper.load_default(),
-                     cifar10_ae.encode, cifar10_ae.decode,
-                     cifar10_ae.RELU_MAX, ae_folder)
-    ae.build_models(ae_folder) # load model
+    data = 'stl'
 
-    encoded_dataset = Cifar10Wrapper.load_from_h5(
-        os.path.join(ae_folder, 'encoded_cifar10.h5'))
+    if data == 'cifar':
+        ae_folder = 'prod/cifar10_ae2_relu_%d' % cifar10_ae.RELU_MAX
+        # ae_folder = 'prod/cifar10_new_ae%d_relu%d' % (
+        #     cifar10_ae.LATENT_DIM, cifar10_ae.RELU_MAX)
+        ae = AutoEncoder(Cifar10Wrapper.load_default(),
+                         cifar10_ae.encode, cifar10_ae.decode,
+                         cifar10_ae.RELU_MAX, ae_folder)
+        encoded_dataset = Cifar10Wrapper.load_from_h5(
+            os.path.join(ae_folder, 'encoded_cifar10.h5'))
+    elif data =='stl':
+        ae_folder = '/home/hengyuah/dem/prod/stl10_ae_1024_relu6'
+        ae = AutoEncoder(STL10Wrapper.load_default(),
+                         stl_ae.encode, stl_ae.decode,
+                         stl_ae.RELU_MAX, ae_folder)
+        encoded_dataset = STL10Wrapper.load_from_h5(
+            os.path.join(ae_folder, 'encoded_stl10.h5'))
+
+    ae.build_models(ae_folder) # load model
     assert len(encoded_dataset.x_shape) == 1
 
     name = 'ptrbm_scheme1'
