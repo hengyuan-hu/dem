@@ -62,6 +62,16 @@ class DEM(object):
         """
         return self.rbm.loss_and_cost(z_data, z_model)
 
+    def autoencoder_cost(self, x):
+        x_recon = self.decoder(self.encoder(x))
+        cost = tf.reduce_mean(tf.square(x_recon - x))
+        return cost
+
+    def autodecoder_cost(self, z):
+        z_recon = self.encoder(self.decoder(z))
+        cost = tf.reduce_mean(tf.square(z_recon - z))
+        return cost
+
     def encoder_cost(self, x, target_z):
         """build the graph for encoder cost.
 
@@ -141,10 +151,9 @@ if __name__ == '__main__':
     chain_shape = (train_config.batch_size, rbm.num_vis)
     random_init = np.random.normal(0.0, 1.0, chain_shape)
     sampler = GibbsSampler(random_init, rbm, train_config.cd_k, None)
-    cd_sampler = GibbsSampler(None, rbm, 1, None)
 
-    output_dir = os.path.join(ae_folder, 'test_up_down')
+    output_dir = os.path.join(ae_folder, 'test_joint_up_down')
     dem_trainer = DEMTrainer(sess, dataset, dem, utils.vis_cifar10, output_dir)
     # dem_trainer.test_decode()
     # dem_trainer._test_init()
-    dem_trainer.train(train_config, sampler, cd_sampler, sampler_generator)
+    dem_trainer.train(train_config, sampler, sampler_generator)
