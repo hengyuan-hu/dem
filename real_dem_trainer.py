@@ -63,19 +63,21 @@ class DEMTrainer(object):
 
     def train(self, train_config, sampler, sampler_generator):
         # building graphs
-        ae_x_data = tf.placeholder(tf.float32, self.x_shape)
-        ae_cost = self.dem.autoencoder_cost(ae_x_data)
+        encoder_x = tf.placeholder(tf.float32, self.x_shape)
+        encoder_target_z = tf.placeholder(tf.float32, self.z_shape)
+        encoder_cost = self.dem.encoder_cost(encoder_x, encoder_target_z)
+
+        ae_x = tf.placeholder(tf.float32, self.x_shape)
+        ae_cost = self.dem.autoencoder_cost(ae_x)
 
         rbm_z_data = tf.placeholder(tf.float32, self.z_shape)
         rbm_z_model = tf.placeholder(tf.float32, self.z_shape)
         rbm_loss, rbm_cost = self.dem.rbm_loss_and_cost(rbm_z_data, rbm_z_model)
 
-        ad_cost = self.dem.autodecoder_cost(rbm_z_model)
-
         opt_rbm = tf.train.GradientDescentOptimizer(
             train_config.lr).minimize(rbm_cost)
         opt_encoder_decoder = tf.train.GradientDescentOptimizer(
-            train_config.lr).minimize(ad_cost + ae_cost)
+            train_config.lr).minimize(encoder_cost + ae_cost)
 
         if sampler.is_persistent:
             print '>>>>>>>> using pcd-%d' % train_config.cd_k
@@ -106,13 +108,17 @@ class DEMTrainer(object):
                 # run sampler, get z_model
                 feed_dict = {} if sampler.is_persistent else {rbm_z_data: z_data}
                 z_model, _ = self.sess.run([sample_op, sampler_updates], feed_dict)
+                # downward pass
+                x_model = self.dem.decoder.predict(z_model)
 
                 # update encoder decoder weights
-                feed_dict = {ae_x_data: x_data, rbm_z_model: z_model,
-                             self.dem.decoder.input: z_model, # for batch_size
+                feed_dict = {encoder_x: x_model,
+                             encoder_target_z: z_model,
+                             ae_x: x_data,
+                             self.dem.decoder.input: z_data, # for batch_size
                              K.learning_phase(): 1} # for noise
                 loss_vals['decoder'][b],loss_vals['encoder'][b], _ = self.sess.run(
-                    [ae_cost, ad_cost, opt_encoder_decoder], feed_dict)
+                    [ae_cost, encoder_cost, opt_encoder_decoder], feed_dict)
 
                 # update rbm weights
                 feed_dict = {rbm_z_data: z_data, rbm_z_model: z_model}
@@ -132,7 +138,7 @@ class DEMTrainer(object):
                 print 'encoder L1 weights sum: %s, decoder L1 weights sum: %s' \
                     % (el1_weights[0].sum(), dl1_weights[0].sum())
 
-            if (e+1) % 10 == 0:
+            if (e+1) % 5 == 0:
                 samples = self._draw_samples(sampler_generator())
                 samples_path = os.path.join(
                     self.output_dir, 'samples-epoch%d.png' % (e+1))

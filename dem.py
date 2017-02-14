@@ -152,7 +152,7 @@ if __name__ == '__main__':
     random_init = np.random.normal(0.0, 1.0, chain_shape)
     sampler = GibbsSampler(random_init, rbm, train_config.cd_k, None)
 
-    output_dir = os.path.join(ae_folder, 'test_joint_up_down')
+    output_dir = os.path.join(ae_folder, 'test_joint_up_single_down')
     dem_trainer = DEMTrainer(sess, dataset, dem, utils.vis_cifar10, output_dir)
     # dem_trainer.test_decode()
     # dem_trainer._test_init()
