@@ -63,23 +63,35 @@ class DEMTrainer(object):
 
     def train(self, train_config, sampler, sampler_generator):
         # building graphs
-        encoder_x = tf.placeholder(tf.float32, self.x_shape, name='encoder_x')
-        encoder_target_z = tf.placeholder(tf.float32, self.z_shape)
-        encoder_cost = self.dem.encoder_cost(encoder_x, encoder_target_z)
-        opt_encoder = tf.train.GradientDescentOptimizer(
-            train_config.lr).minimize(encoder_cost)
+        # encoder_x = tf.placeholder(tf.float32, self.x_shape)
+        # encoder_target_z = tf.placeholder(tf.float32, self.z_shape)
+        # encoder_cost = self.dem.encoder_cost(encoder_x, encoder_target_z)
 
-        decoder_z = tf.placeholder(tf.float32, self.z_shape)
-        decoder_target_x = tf.placeholder(tf.float32, self.x_shape)
-        decoder_cost = self.dem.decoder_cost(decoder_z, decoder_target_x)
-        opt_decoder = tf.train.GradientDescentOptimizer(
-            train_config.lr).minimize(decoder_cost)
+        ae_x = tf.placeholder(tf.float32, self.x_shape)
+        encoder_fe_cost = self.dem.free_energy_wrt_x(ae_x)
+        ae_cost = self.dem.autoencoder_cost(ae_x)
+
+        fe_cost_factor = 5e-5
+
+        encoder_final_conv = self.dem.get_trainable_vars(['encoder'])[-2]
+        efc_grad_mean = tf.reduce_mean(
+            tf.abs(tf.gradients(fe_cost_factor * encoder_fe_cost, encoder_final_conv)[0]))
+        aec_grad_mean = tf.reduce_mean(
+            tf.abs(tf.gradients(ae_cost, encoder_final_conv)[0]))
+
+        ae_vars = self.dem.get_trainable_vars(['encoder', 'decoder'])
+        print 'autoencoder vars'
+        for v in ae_vars:
+            print v.name
 
         rbm_z_data = tf.placeholder(tf.float32, self.z_shape)
         rbm_z_model = tf.placeholder(tf.float32, self.z_shape)
         rbm_loss, rbm_cost = self.dem.rbm_loss_and_cost(rbm_z_data, rbm_z_model)
+
         opt_rbm = tf.train.GradientDescentOptimizer(
             train_config.lr).minimize(rbm_cost)
+        opt_ae = tf.train.GradientDescentOptimizer(
+            0.01).minimize(ae_cost + fe_cost_factor * encoder_fe_cost, var_list=ae_vars)
 
         if sampler.is_persistent:
             print '>>>>>>>> using pcd-%d' % train_config.cd_k
@@ -91,7 +103,6 @@ class DEMTrainer(object):
         # finish building all graphs, init only new variables
         utils.initialize_uninitialized_variables_by_keras()
         # self._test_init()
-        # return
 
         num_batches = int(math.ceil(
             len(self.train_xs) / float(train_config.batch_size)))
@@ -111,25 +122,28 @@ class DEMTrainer(object):
                 # run sampler, get z_model
                 feed_dict = {} if sampler.is_persistent else {rbm_z_data: z_data}
                 z_model, _ = self.sess.run([sample_op, sampler_updates], feed_dict)
-                # downward pass
-                x_model = self.dem.decoder.predict(z_model)
+                # # downward pass
+                # x_model = self.dem.decoder.predict(z_model)
 
-                # update decoder weights
-                feed_dict = {decoder_z: z_data, decoder_target_x: x_data,
+                # check gradient magnitute
+                # grad_fe, grad_ae = self.sess.run(
+                #     [efc_grad_mean, aec_grad_mean],
+                #     {ae_x: x_data,
+                #      self.dem.decoder.input: z_data,
+                #      K.learning_phase(): 1})
+                # print 'grad_fe:', grad_fe, 'grad_ae:', grad_ae
+
+                # update encoder decoder weights
+                feed_dict = {ae_x: x_data,
                              self.dem.decoder.input: z_data, # for batch_size
                              K.learning_phase(): 1} # for noise
-                loss_vals['decoder'][b], _ = self.sess.run(
-                    [decoder_cost, opt_decoder], feed_dict)
+                loss_vals['decoder'][b],loss_vals['encoder'][b], _ = self.sess.run(
+                    [ae_cost, encoder_fe_cost, opt_ae], feed_dict)
 
                 # update rbm weights
                 feed_dict = {rbm_z_data: z_data, rbm_z_model: z_model}
                 loss_vals['rbm'][b], _ = self.sess.run(
                     [rbm_loss, opt_rbm], feed_dict)
-
-                # update encoder weigths
-                feed_dict = {encoder_x: x_model, encoder_target_z: z_model}
-                loss_vals['encoder'][b], _ = self.sess.run(
-                    [encoder_cost, opt_encoder], feed_dict)
 
             self.log.append(
                 'Epoch %d, RBM Loss: %.4f, Deocder Loss: %.4f, Encoder Loss: %.4f' \
@@ -141,10 +155,10 @@ class DEMTrainer(object):
             if True:
                 el1_weights = self.dem.encoder.layers[1].get_weights()
                 dl1_weights = self.dem.decoder.layers[-2].get_weights()
-                print 'encoder L1 weights sum: %s, decoder L1 weights sum: %s' \
+                print '\tencoder L1 weights sum: %s, decoder L1 weights sum: %s' \
                     % (el1_weights[0].sum(), dl1_weights[0].sum())
 
-            if (e+1) % 10 == 0:
+            if (e+1) % 5 == 0:
                 samples = self._draw_samples(sampler_generator())
                 samples_path = os.path.join(
                     self.output_dir, 'samples-epoch%d.png' % (e+1))
