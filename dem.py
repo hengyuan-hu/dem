@@ -7,6 +7,12 @@ def tf_norm(x):
     return tf.sqrt(tf.reduce_sum(tf.square(x)))
 
 
+def tf_mean_norm(x):
+    return tf.reduce_mean(tf.abs(x))
+    # return tf.sqrt(tf.reduce_sum(tf.square(x)))
+    # return tf.sqrt(tf.reduce_mean(tf.square(x)))
+
+
 class DEM(object):
     """Compositional model consists of encoder, assoc memory(rbm), decoder."""
     def __init__(self, ae, rbm, encoder=None, decoder=None):
@@ -76,7 +82,8 @@ class DEM(object):
         z = self.encoder(x)
         fe = tf.reduce_mean(self.rbm.free_energy(z))
         dfe_dz = tf.gradients(fe, z)[0]
-        grad_norm = tf_norm(dfe_dz)
+        grad_norm = tf_mean_norm(dfe_dz)
+        grad_norm = tf.stop_gradient(grad_norm)
         # grad_norm = tf.Print(grad_norm, ['fe grad_norm:', grad_norm])
         return fe / grad_norm
 
@@ -99,7 +106,8 @@ class DEM(object):
         x_recon = self.decoder(self.encoder(x))
         cost = tf.reduce_mean(tf.square(x_recon - x))
         dcost_dx_recon = tf.gradients(cost, x_recon)[0]
-        grad_norm = tf_norm(dcost_dx_recon)
+        grad_norm = tf_mean_norm(dcost_dx_recon)
+        grad_norm = tf.stop_gradient(grad_norm)
         # grad_norm = tf.Print(grad_norm, ['ae grad_norm:', grad_norm])
         return cost / grad_norm
 

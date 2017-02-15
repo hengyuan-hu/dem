@@ -89,7 +89,7 @@ class DEMTrainer(object):
         opt_rbm = tf.train.GradientDescentOptimizer(
             train_config.lr).minimize(rbm_cost)
         opt_ae = tf.train.GradientDescentOptimizer(
-            train_config.lr * 0.01).minimize(ae_cost + encoder_fe_cost, var_list=ae_vars)
+            1e-8).minimize(ae_cost + encoder_fe_cost, var_list=ae_vars)
 
         if sampler.is_persistent:
             print '>>>>>>>> using pcd-%d' % train_config.cd_k
@@ -123,7 +123,7 @@ class DEMTrainer(object):
                 # # downward pass
                 # x_model = self.dem.decoder.predict(z_model)
 
-                # # check gradient magnitute
+                # check gradient magnitute
                 # grad_fe, grad_ae = self.sess.run(
                 #     [efc_grad_mean, aec_grad_mean],
                 #     {ae_x: x_data,
@@ -153,7 +153,7 @@ class DEMTrainer(object):
             if True:
                 el1_weights = self.dem.encoder.layers[1].get_weights()
                 dl1_weights = self.dem.decoder.layers[-2].get_weights()
-                print 'encoder L1 weights sum: %s, decoder L1 weights sum: %s' \
+                print '\tencoder L1 weights sum: %s, decoder L1 weights sum: %s' \
                     % (el1_weights[0].sum(), dl1_weights[0].sum())
 
             if (e+1) % 5 == 0:
