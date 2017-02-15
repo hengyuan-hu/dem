@@ -13,14 +13,14 @@ class RBM(object):
             self.num_vis = num_vis
             self.num_hid = num_hid
             self.weights = tf.Variable(
-                tf.random_normal([self.num_vis, self.num_hid], 0.0, 0.01))
-            self.vbias = tf.Variable(tf.zeros([1, self.num_vis]))
-            self.hbias = tf.Variable(tf.zeros([1, self.num_hid]))
+                tf.random_normal([self.num_vis, self.num_hid], 0.0, 0.01), name='w')
+            self.vbias = tf.Variable(tf.zeros([1, self.num_vis]), name='vbias')
+            self.hbias = tf.Variable(tf.zeros([1, self.num_hid]), name='hbias')
         else:
             with h5py.File(params_file, 'r') as hf:
-                self.weights = tf.Variable(np.array(hf.get('weights')))
-                self.vbias = tf.Variable(np.array(hf.get('vbias')))
-                self.hbias = tf.Variable(np.array(hf.get('hbias')))
+                self.weights = tf.Variable(np.array(hf.get('weights')), name='w')
+                self.vbias = tf.Variable(np.array(hf.get('vbias')), name='vbias')
+                self.hbias = tf.Variable(np.array(hf.get('hbias')), name='hbias')
             self.num_vis, self.num_hid = self.weights.get_shape().as_list()
 
     def save_model(self, tf_sess, folder, prefix):
