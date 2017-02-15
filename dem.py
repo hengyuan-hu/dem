@@ -81,11 +81,11 @@ class DEM(object):
         """build the graph to compute free energy given x :: placeholder"""
         z = self.encoder(x)
         fe = tf.reduce_mean(self.rbm.free_energy(z))
-        dfe_dz = tf.gradients(fe, z)[0]
-        grad_norm = tf_mean_norm(dfe_dz)
-        grad_norm = tf.stop_gradient(grad_norm)
+        # dfe_dz = tf.gradients(fe, z)[0]
+        # grad_norm = tf_mean_norm(dfe_dz)
+        # grad_norm = tf.stop_gradient(grad_norm)
         # grad_norm = tf.Print(grad_norm, ['fe grad_norm:', grad_norm])
-        return fe / grad_norm
+        return fe# / grad_norm
 
     def vhv(self, z_samples):
         """z->h->z public interface for GibbsSampler.
@@ -105,11 +105,11 @@ class DEM(object):
     def autoencoder_cost(self, x):
         x_recon = self.decoder(self.encoder(x))
         cost = tf.reduce_mean(tf.square(x_recon - x))
-        dcost_dx_recon = tf.gradients(cost, x_recon)[0]
-        grad_norm = tf_mean_norm(dcost_dx_recon)
-        grad_norm = tf.stop_gradient(grad_norm)
+        # dcost_dx_recon = tf.gradients(cost, x_recon)[0]
+        # grad_norm = tf_mean_norm(dcost_dx_recon)
+        # grad_norm = tf.stop_gradient(grad_norm)
         # grad_norm = tf.Print(grad_norm, ['ae grad_norm:', grad_norm])
-        return cost / grad_norm
+        return cost# / grad_norm
 
     # def autodecoder_cost(self, z):
     #     z_recon = self.encoder(self.decoder(z))

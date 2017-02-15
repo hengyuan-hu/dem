@@ -71,9 +71,11 @@ class DEMTrainer(object):
         encoder_fe_cost = self.dem.free_energy_wrt_x(ae_x)
         ae_cost = self.dem.autoencoder_cost(ae_x)
 
+        fe_cost_factor = 5e-5
+
         encoder_final_conv = self.dem.get_trainable_vars(['encoder'])[-2]
         efc_grad_mean = tf.reduce_mean(
-            tf.abs(tf.gradients(encoder_fe_cost, encoder_final_conv)[0]))
+            tf.abs(tf.gradients(fe_cost_factor * encoder_fe_cost, encoder_final_conv)[0]))
         aec_grad_mean = tf.reduce_mean(
             tf.abs(tf.gradients(ae_cost, encoder_final_conv)[0]))
 
@@ -89,7 +91,7 @@ class DEMTrainer(object):
         opt_rbm = tf.train.GradientDescentOptimizer(
             train_config.lr).minimize(rbm_cost)
         opt_ae = tf.train.GradientDescentOptimizer(
-            1e-8).minimize(ae_cost + encoder_fe_cost, var_list=ae_vars)
+            0.01).minimize(ae_cost + fe_cost_factor * encoder_fe_cost, var_list=ae_vars)
 
         if sampler.is_persistent:
             print '>>>>>>>> using pcd-%d' % train_config.cd_k
