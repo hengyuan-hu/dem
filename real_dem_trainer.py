@@ -63,12 +63,24 @@ class DEMTrainer(object):
 
     def train(self, train_config, sampler, sampler_generator):
         # building graphs
-        encoder_x = tf.placeholder(tf.float32, self.x_shape)
-        encoder_target_z = tf.placeholder(tf.float32, self.z_shape)
-        encoder_cost = self.dem.encoder_cost(encoder_x, encoder_target_z)
+        # encoder_x = tf.placeholder(tf.float32, self.x_shape)
+        # encoder_target_z = tf.placeholder(tf.float32, self.z_shape)
+        # encoder_cost = self.dem.encoder_cost(encoder_x, encoder_target_z)
 
         ae_x = tf.placeholder(tf.float32, self.x_shape)
+        encoder_fe_cost = self.dem.free_energy_wrt_x(ae_x)
         ae_cost = self.dem.autoencoder_cost(ae_x)
+
+        encoder_final_conv = self.dem.get_trainable_vars(['encoder'])[-2]
+        efc_grad_mean = tf.reduce_mean(
+            tf.abs(tf.gradients(encoder_fe_cost, encoder_final_conv)[0]))
+        aec_grad_mean = tf.reduce_mean(
+            tf.abs(tf.gradients(ae_cost, encoder_final_conv)[0]))
+
+        ae_vars = self.dem.get_trainable_vars(['encoder', 'decoder'])
+        print 'autoencoder vars'
+        for v in ae_vars:
+            print v.name
 
         rbm_z_data = tf.placeholder(tf.float32, self.z_shape)
         rbm_z_model = tf.placeholder(tf.float32, self.z_shape)
@@ -76,8 +88,8 @@ class DEMTrainer(object):
 
         opt_rbm = tf.train.GradientDescentOptimizer(
             train_config.lr).minimize(rbm_cost)
-        opt_encoder_decoder = tf.train.GradientDescentOptimizer(
-            train_config.lr).minimize(encoder_cost + ae_cost)
+        opt_ae = tf.train.GradientDescentOptimizer(
+            train_config.lr * 0.01).minimize(ae_cost + encoder_fe_cost, var_list=ae_vars)
 
         if sampler.is_persistent:
             print '>>>>>>>> using pcd-%d' % train_config.cd_k
@@ -108,17 +120,23 @@ class DEMTrainer(object):
                 # run sampler, get z_model
                 feed_dict = {} if sampler.is_persistent else {rbm_z_data: z_data}
                 z_model, _ = self.sess.run([sample_op, sampler_updates], feed_dict)
-                # downward pass
-                x_model = self.dem.decoder.predict(z_model)
+                # # downward pass
+                # x_model = self.dem.decoder.predict(z_model)
+
+                # # check gradient magnitute
+                # grad_fe, grad_ae = self.sess.run(
+                #     [efc_grad_mean, aec_grad_mean],
+                #     {ae_x: x_data,
+                #      self.dem.decoder.input: z_data,
+                #      K.learning_phase(): 1})
+                # print 'grad_fe:', grad_fe, 'grad_ae:', grad_ae
 
                 # update encoder decoder weights
-                feed_dict = {encoder_x: x_model,
-                             encoder_target_z: z_model,
-                             ae_x: x_data,
+                feed_dict = {ae_x: x_data,
                              self.dem.decoder.input: z_data, # for batch_size
                              K.learning_phase(): 1} # for noise
                 loss_vals['decoder'][b],loss_vals['encoder'][b], _ = self.sess.run(
-                    [ae_cost, encoder_cost, opt_encoder_decoder], feed_dict)
+                    [ae_cost, encoder_fe_cost, opt_ae], feed_dict)
 
                 # update rbm weights
                 feed_dict = {rbm_z_data: z_data, rbm_z_model: z_model}

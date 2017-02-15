@@ -3,18 +3,22 @@ from autoencoder import build_model
 from rbm import RBM
 
 
+def tf_norm(x):
+    return tf.sqrt(tf.reduce_sum(tf.square(x)))
+
+
 class DEM(object):
     """Compositional model consists of encoder, assoc memory(rbm), decoder."""
     def __init__(self, ae, rbm, encoder=None, decoder=None):
         # self.ae = ae
         if ae:
+            assert False
             self.encoder = ae.encoder
             self.decoder = ae.decoder
         else:
             assert encoder is not None and decoder is not None
             self.encoder = encoder
             self.decoder = decoder
-
         self.rbm = rbm
 
         assert len(self.encoder.get_output_shape_at(-1)) == 2, \
@@ -26,12 +30,15 @@ class DEM(object):
                               encode_fn, encoder_weights,
                               decode_fn, decoder_weights,
                               rbm_weights):
-        encoder = build_model(
-            x_shape, relu_max, encode_fn, None, encoder_weights)
+        with tf.name_scope('encoder'):
+            encoder = build_model(
+                x_shape, relu_max, encode_fn, None, encoder_weights)
         z_shape = encoder.get_output_shape_at(-1)[1:]
-        decoder = build_model(
-            z_shape, relu_max, None, decode_fn, decoder_weights)
-        rbm = RBM(None, None, rbm_weights)
+        with tf.name_scope('decoder'):
+            decoder = build_model(
+                z_shape, relu_max, None, decode_fn, decoder_weights)
+        with tf.name_scope('rbm'):
+            rbm = RBM(None, None, rbm_weights)
         assert z_shape[0] == rbm.num_vis, ('%s vs %s' % z_shape[0], rbm.num_vis)
         return cls(None, rbm, encoder, decoder)
 
@@ -42,6 +49,13 @@ class DEM(object):
     @property
     def num_h(self):
         return self.rbm.num_hid
+
+    def get_trainable_vars(self, names):
+        trainable_vars = []
+        for name in names:
+            trainable_vars.extend(
+                tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=name))
+        return trainable_vars
 
     def encode(self, sess, dataset, dataset_cls):
         x = tf.placeholder(tf.float32, [None] + list(dataset.x_shape))
@@ -56,6 +70,15 @@ class DEM(object):
     def free_energy(self, z):
         """build the graph to compute free energy given z :: placeholder"""
         return self.rbm.free_energy(z)
+
+    def free_energy_wrt_x(self, x):
+        """build the graph to compute free energy given x :: placeholder"""
+        z = self.encoder(x)
+        fe = tf.reduce_mean(self.rbm.free_energy(z))
+        dfe_dz = tf.gradients(fe, z)[0]
+        grad_norm = tf_norm(dfe_dz)
+        # grad_norm = tf.Print(grad_norm, ['fe grad_norm:', grad_norm])
+        return fe / grad_norm
 
     def vhv(self, z_samples):
         """z->h->z public interface for GibbsSampler.
@@ -75,12 +98,15 @@ class DEM(object):
     def autoencoder_cost(self, x):
         x_recon = self.decoder(self.encoder(x))
         cost = tf.reduce_mean(tf.square(x_recon - x))
-        return cost
+        dcost_dx_recon = tf.gradients(cost, x_recon)[0]
+        grad_norm = tf_norm(dcost_dx_recon)
+        # grad_norm = tf.Print(grad_norm, ['ae grad_norm:', grad_norm])
+        return cost / grad_norm
 
-    def autodecoder_cost(self, z):
-        z_recon = self.encoder(self.decoder(z))
-        cost = tf.reduce_mean(tf.square(z_recon - z))
-        return cost
+    # def autodecoder_cost(self, z):
+    #     z_recon = self.encoder(self.decoder(z))
+    #     cost = tf.reduce_mean(tf.square(z_recon - z))
+    #     return cost
 
     def encoder_cost(self, x, target_z):
         """build the graph for encoder cost.
@@ -145,25 +171,37 @@ if __name__ == '__main__':
 
     dataset = Cifar10Wrapper.load_default()
     ae_folder = 'prod/cifar10_ae3_relu_6/'
-    ae = AutoEncoder(dataset, cifar10_ae.encode, cifar10_ae.decode,
-                     cifar10_ae.RELU_MAX, ae_folder)
-    ae.build_models(ae_folder)
+    encoder_weights_file = os.path.join(ae_folder, 'encoder.h5')
+    decoder_weights_file = os.path.join(ae_folder, 'decoder.h5')
+    # ae = AutoEncoder(dataset, cifar10_ae.encode, cifar10_ae.decode,
+    #                  cifar10_ae.RELU_MAX, ae_folder)
+    # ae.build_models(ae_folder)
 
     rbm_params_file = os.path.join(
         ae_folder, 'ptrbm_scheme1/ptrbm_hid2000_lr0.001_pcd25/epoch_500_rbm.h5')
-    rbm = RBM(None, None, rbm_params_file)
-    dem = DEM(ae, rbm)
+    # rbm = RBM(None, None, rbm_params_file)
+
+    dem = DEM.load_from_param_files(dataset.x_shape, cifar10_ae.RELU_MAX,
+                                    cifar10_ae.encode, encoder_weights_file,
+                                    cifar10_ae.decode, decoder_weights_file,
+                                    rbm_params_file)
+    # # print variables
+    # variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='encoder')
+    # for v in variables:
+    #     print v.name
+    # dem = DEM(ae, rbm)
 
     train_config = utils.TrainConfig(
-        lr=0.005, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25)
-    sampler_generator = create_sampler_generator(rbm, None, 100, 1000)
+        lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25)
+    sampler_generator = create_sampler_generator(dem.rbm, None, 100, 1000)
     # pcd sampler
-    chain_shape = (train_config.batch_size, rbm.num_vis)
+    chain_shape = (train_config.batch_size, dem.rbm.num_vis)
     random_init = np.random.normal(0.0, 1.0, chain_shape)
-    sampler = GibbsSampler(random_init, rbm, train_config.cd_k, None)
+    sampler = GibbsSampler(random_init, dem.rbm, train_config.cd_k, None)
 
-    output_dir = os.path.join(ae_folder, 'test_joint_up_single_down')
+    output_dir = os.path.join(ae_folder, 'test_ae_fe')
     dem_trainer = DEMTrainer(sess, dataset, dem, utils.vis_cifar10, output_dir)
     # dem_trainer.test_decode()
     # dem_trainer._test_init()
+
     dem_trainer.train(train_config, sampler, sampler_generator)
