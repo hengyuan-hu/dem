@@ -1,24 +1,25 @@
-import keras.backend as K
-import numpy as np
 import os
+import numpy as np
+import keras.backend as K
 
-from dem_trainer import DEMTrainer
-from dataset_wrapper import MnistWrapper, Cifar10Wrapper
-from rbm import RBM, GibbsSampler
+from rbm_trainer import RBMTrainer
+from dataset_wrapper import Cifar10Wrapper
+from rbm import RBM
 from autoencoder import AutoEncoder
+import gibbs_sampler
 import cifar10_ae
 import utils
 
 
-class RBMPretrainer(DEMTrainer):
+class RBMPretrainer(RBMTrainer):
     """Encapsulate functions for pretraining RBM in a DEM.
 
     Mainly used to resolve the difference in sampling.
     """
-    def __init__(self, sess, dataset, rbm, decoder, sampler, vis_fn):
+    def __init__(self, sess, dataset, rbm, decoder, vis_fn, output_dir):
         self.decoder = decoder
         super(RBMPretrainer, self).__init__(
-            sess, dataset, rbm, sampler, vis_fn)
+            sess, dataset, rbm, vis_fn, output_dir)
 
     def _save_samples(self, samples, img_path):
         assert hasattr(self, 'decoder'), 'Please set decoder before training'
@@ -26,41 +27,30 @@ class RBMPretrainer(DEMTrainer):
         super(RBMPretrainer, self)._save_samples(samples, img_path)
 
 
-def create_sampler_generator(rbm, init_vals, chain_shape, burnin):
-    """create sampler generator to draw sample/reconstruct test."""
-
-    def sampler_generator(init_vals=init_vals):
-        if init_vals is None:
-            init_vals = np.random.normal(0.0, 1.0, chain_shape)
-        return GibbsSampler(init_vals, rbm, 1, burnin)
-
-    return sampler_generator
-
-
 def pretrain(sess, rbm, dataset, decoder, train_config, vis_fn, parent_dir):
     if train_config.use_pcd:
-        chain_shape = (train_config.batch_size,) + dataset.x_shape
-        random_init = np.random.normal(0.0, 1.0, chain_shape)
-        sampler = GibbsSampler(random_init, rbm, train_config.cd_k, None)
+        sampler = gibbs_sampler.GibbsSampler.create_pcd_sampler(
+            rbm, train_config.batch_size, train_config.cd_k)
     else:
-        sampler = GibbsSampler(None, rbm, train_config.cd_k, None)
+        sampler = gibbs_sampler.GibbsSampler.create_cd_sampler(
+            rbm, train_config.cd_k)
 
     if train_config.draw_samples:
-        sampler_generator = create_sampler_generator(
-            rbm, None, dataset.test_xs[:100].shape, 1000)
+        sampler_generator = gibbs_sampler.create_sampler_generator(
+            rbm, None, 100, 1000)
     else:
-        sampler_generator = create_sampler_generator(
+        sampler_generator = gibbs_sampler.create_sampler_generator(
             rbm, dataset.test_xs[:100], None, 0)
 
-    trainer = RBMPretrainer(sess, dataset, rbm, decoder, sampler, vis_fn)
     rbm_dir = 'ptrbm_hid%d_%s' % (rbm.num_hid, str(train_config))
     output_dir = os.path.join(parent_dir, rbm_dir)
-
     train_config.dump_log(output_dir)
-    trainer.train(train_config, sampler_generator, output_dir)
-    trainer.dump_log(output_dir)
 
+    trainer = RBMPretrainer(sess, dataset, rbm, decoder, vis_fn, output_dir)
+    trainer.train(train_config, sampler, sampler_generator)
+    trainer.dump_log(output_dir)
     return output_dir
+
 
 if __name__ == '__main__':
     np.random.seed(666)
@@ -80,10 +70,10 @@ if __name__ == '__main__':
     num_hid = 2000
     rbm = RBM(encoded_dataset.x_shape[0], num_hid, None)
 
-    # train_config = utils.TrainConfig(
-    #     lr=0.1, batch_size=100, num_epoch=20, use_pcd=False, cd_k=1)
     train_config = utils.TrainConfig(
-        lr=0.01, batch_size=100, num_epoch=20, use_pcd=True, cd_k=1)
+        lr=0.1, batch_size=100, num_epoch=20, use_pcd=False, cd_k=1)
+    # train_config = utils.TrainConfig(
+    #     lr=0.01, batch_size=100, num_epoch=20, use_pcd=True, cd_k=1)
 
     output_folder = os.path.join(ae_folder, 'test_pretrain')
     pretrain(sess, rbm, encoded_dataset, ae.decoder,

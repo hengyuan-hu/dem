@@ -55,14 +55,14 @@ TRAIN_SCHEMES = {
 
 
 if __name__ == '__main__':
-    np.random.seed(666)
+    np.random.seed(66699)
     sess = utils.create_session()
     K.set_session(sess)
 
-    data = 'stl'
+    data = 'cifar'
 
     if data == 'cifar':
-        ae_folder = 'prod/cifar10_ae2_relu_%d' % cifar10_ae.RELU_MAX
+        ae_folder = 'prod/cifar10_ae3_relu_%d' % cifar10_ae.RELU_MAX
         # ae_folder = 'prod/cifar10_new_ae%d_relu%d' % (
         #     cifar10_ae.LATENT_DIM, cifar10_ae.RELU_MAX)
         ae = AutoEncoder(Cifar10Wrapper.load_default(),
@@ -83,10 +83,13 @@ if __name__ == '__main__':
 
     name = 'ptrbm_scheme1'
     scheme = TRAIN_SCHEMES[name]
-    output_folder = os.path.join(ae_folder, name+('_%d'%TRAIN_SCHEMES[name]['num_hid']))
+    output_folder = os.path.join(
+        ae_folder, name+('_%d'%TRAIN_SCHEMES[name]['num_hid']))
+
     if os.path.exists(output_folder) and not scheme['force_retrain']:
         print '%s exists, skip training.' % name
         exit()
+
     print 'Training in:', output_folder
     rbm = RBM(encoded_dataset.x_shape[0], scheme['num_hid'], None)
     train_configs = scheme['train_configs']
