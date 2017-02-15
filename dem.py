@@ -43,6 +43,16 @@ class DEM(object):
     def num_h(self):
         return self.rbm.num_hid
 
+    def encode(self, sess, dataset, dataset_cls):
+        x = tf.placeholder(tf.float32, [None] + list(dataset.x_shape))
+        h = self.rbm._compute_up(self.encoder(x))
+        train_set_size = 1000
+        # num_batches = len(dataset.train_xs) / batch_size
+        encoded_train_xs = sess.run(h, {x: dataset.train_xs[:train_set_size]})
+        encoded_test_xs = sess.run(h, {x: dataset.test_xs})
+        return dataset_cls(encoded_train_xs, dataset.train_ys[:train_set_size],
+                           encoded_test_xs, dataset.test_ys)
+
     def free_energy(self, z):
         """build the graph to compute free energy given z :: placeholder"""
         return self.rbm.free_energy(z)
