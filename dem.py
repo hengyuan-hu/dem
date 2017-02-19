@@ -9,8 +9,6 @@ def tf_norm(x):
 
 def tf_mean_norm(x):
     return tf.reduce_mean(tf.abs(x))
-    # return tf.sqrt(tf.reduce_sum(tf.square(x)))
-    # return tf.sqrt(tf.reduce_mean(tf.square(x)))
 
 
 class DEM(object):
@@ -111,11 +109,6 @@ class DEM(object):
         # grad_norm = tf.Print(grad_norm, ['ae grad_norm:', grad_norm])
         return cost# / grad_norm
 
-    # def autodecoder_cost(self, z):
-    #     z_recon = self.encoder(self.decoder(z))
-    #     cost = tf.reduce_mean(tf.square(z_recon - z))
-    #     return cost
-
     def encoder_cost(self, x, target_z):
         """build the graph for encoder cost.
 
@@ -146,26 +139,13 @@ class DEM(object):
         print 'model save at', encoder_weights_file
 
 
-# TODO: this is duplicated
-def create_sampler_generator(rbm, init_vals, num_chain, burnin):
-    """create sampler generator to draw sample/reconstruct test."""
-    if num_chain:
-        chain_shape = (num_chain, rbm.num_vis)
-
-    def sampler_generator(init_vals=init_vals):
-        if init_vals is None:
-            init_vals = np.random.normal(0.0, 1.0, chain_shape)
-        return GibbsSampler(init_vals, rbm, 1, burnin)
-
-    return sampler_generator
-
-
 if __name__ == '__main__':
     from dataset_wrapper import Cifar10Wrapper
-    from rbm import RBM, GibbsSampler
+    from rbm import RBM
     from autoencoder import AutoEncoder
-    from real_dem_trainer import DEMTrainer
+    from dem_trainer import DEMTrainer
     import cifar10_ae
+    import gibbs_sampler
     import utils
 
     import keras.backend as K
@@ -173,43 +153,33 @@ if __name__ == '__main__':
     import h5py
     import numpy as np
 
-    np.random.seed(666)
+    np.random.seed(66699)
     sess = utils.create_session()
     K.set_session(sess)
 
     dataset = Cifar10Wrapper.load_default()
     ae_folder = 'prod/cifar10_ae3_relu_6/'
-    encoder_weights_file = os.path.join(ae_folder, 'encoder.h5')
-    decoder_weights_file = os.path.join(ae_folder, 'decoder.h5')
-    # ae = AutoEncoder(dataset, cifar10_ae.encode, cifar10_ae.decode,
-    #                  cifar10_ae.RELU_MAX, ae_folder)
-    # ae.build_models(ae_folder)
+    # encoder_weights_file = os.path.join(ae_folder, 'encoder.h5')
+    # decoder_weights_file = os.path.join(ae_folder, 'decoder.h5')
+    # rbm_params_file = os.path.join(
+    #     ae_folder, 'ptrbm_scheme1/ptrbm_hid2000_lr0.001_pcd25/epoch_500_rbm.h5')
 
-    rbm_params_file = os.path.join(
-        ae_folder, 'ptrbm_scheme1/ptrbm_hid2000_lr0.001_pcd25/epoch_500_rbm.h5')
-    # rbm = RBM(None, None, rbm_params_file)
+    encoder_weights_file = '/home/hhu/Developer/dem/prod/cifar10_ae3_relu_6/test_ae_fe_const_balance/epoch_500_encoder.h5'
+    decoder_weights_file = encoder_weights_file.replace('encoder.', 'decoder.')
+    rbm_params_file = encoder_weights_file.replace('encoder.', 'rbm.')
 
     dem = DEM.load_from_param_files(dataset.x_shape, cifar10_ae.RELU_MAX,
                                     cifar10_ae.encode, encoder_weights_file,
                                     cifar10_ae.decode, decoder_weights_file,
                                     rbm_params_file)
-    # # print variables
-    # variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='encoder')
-    # for v in variables:
-    #     print v.name
-    # dem = DEM(ae, rbm)
 
     train_config = utils.TrainConfig(
         lr=0.001, batch_size=100, num_epoch=500, use_pcd=True, cd_k=25)
-    sampler_generator = create_sampler_generator(dem.rbm, None, 100, 1000)
-    # pcd sampler
-    chain_shape = (train_config.batch_size, dem.rbm.num_vis)
-    random_init = np.random.normal(0.0, 1.0, chain_shape)
-    sampler = GibbsSampler(random_init, dem.rbm, train_config.cd_k, None)
+
+    sampler_generator = gibbs_sampler.create_sampler_generator(dem.rbm, None, 100, 1000)
+    sampler = gibbs_sampler.GibbsSampler.create_pcd_sampler(
+        dem.rbm, train_config.batch_size, train_config.cd_k)
 
     output_dir = os.path.join(ae_folder, 'test_ae_fe')
     dem_trainer = DEMTrainer(sess, dataset, dem, utils.vis_cifar10, output_dir)
-    # dem_trainer.test_decode()
-    # dem_trainer._test_init()
-
     dem_trainer.train(train_config, sampler, sampler_generator)

@@ -39,8 +39,15 @@ class RBMTrainer(object):
         # prevent tf.init from resetting encoder
         utils.initialize_uninitialized_variables_by_keras()
 
+        fe_x_data_op = tf.reduce_mean(self.rbm.free_energy(x_data_node))
+        fe_x_model_op = tf.reduce_mean(self.rbm.free_energy(x_model_node))
+
         train_xs = self.dataset.train_xs
         num_batches = int(math.ceil(len(train_xs) / float(train_config.batch_size)))
+
+        fe_x_data = np.zeros(num_batches)
+        fe_x_model = np.zeros(num_batches)
+
         for e in range(train_config.num_epoch):
             t = time.time()
             np.random.shuffle(train_xs)
@@ -53,9 +60,13 @@ class RBMTrainer(object):
                 feed_dict = {x_data_node: x_data, x_model_node: x_model}
                 loss_vals[b], _ = self.sess.run([loss, train_step], feed_dict)
 
+                fe_x_data[b], fe_x_model[b] = self.sess.run(
+                    [fe_x_data_op, fe_x_model_op], feed_dict)
+
             self.log.append('Epoch %d, Train Loss: %.4f' % (e+1, loss_vals.mean()))
             print self.log[-1]
             print '\tTime Taken: %ss' % (time.time() - t)
+            print '\tFE_data: %s, FE_model: %s' % (fe_x_data.mean(), fe_x_model.mean())
 
             if (e+1) % 10 == 0 and self.output_dir:
                 samples = self._draw_samples(sampler_generator())

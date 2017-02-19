@@ -22,6 +22,9 @@ class RBM(object):
                 self.hbias = tf.Variable(np.array(hf.get('hbias')), name='hbias')
             self.num_vis, self.num_hid = self.weights.get_shape().as_list()
 
+        # self.p_target = tf.constant(0.01, dtype=tf.float32, shape=[1, self.num_hid])
+        # self.p_active = tf.Variable(tf.zeros([1, self.num_hid]), name='p_h_active')
+
     def save_model(self, tf_sess, folder, prefix):
         weights, vbias, hbias = tf_sess.run(
             [self.weights, self.vbias, self.hbias])
@@ -30,6 +33,13 @@ class RBM(object):
             hf.create_dataset('weights', data=weights)
             hf.create_dataset('vbias', data=vbias)
             hf.create_dataset('hbias', data=hbias)
+
+    def sparsity_cost(self, vis):
+        p_target = tf.constant(0.01, dtype=tf.float32, shape=[1, self.num_hid])
+        h_total_input = tf.matmul(vis, self.weights) + self.hbias
+        penalty = (- tf.matmul(p_target, h_total_input, transpose_b=True)
+                   + tf.reduce_sum(utils.softplus(h_total_input), 1))
+        return tf.reduce_mean(penalty)
 
     def free_energy(self, vis_samples):
         """Compute the free energy defined on visibles.
@@ -52,11 +62,15 @@ class RBM(object):
     def loss_and_cost(self, vis_data, vis_model):
         cost = (tf.reduce_mean(self.free_energy(vis_data))
                 - tf.reduce_mean(self.free_energy(vis_model)))
+        sparsity_penalty = 0.5 * (self.sparsity_cost(vis_data)
+                                  + self.sparsity_cost(vis_model))
+        # sparsity_penalty = tf.Print(sparsity_penalty, [sparsity_penalty])
         loss = self._l2_loss_function(vis_data)
-        return loss, cost
+        return loss, cost + 0.1 * sparsity_penalty
 
     def _compute_up(self, vis):
         hprob = tf.nn.sigmoid(tf.matmul(vis, self.weights) + self.hbias)
+        # hprob = tf.Print(hprob, [tf.reduce_mean(hprob)])
         return hprob
 
     def _compute_down(self, hid):

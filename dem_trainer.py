@@ -12,10 +12,7 @@ class DEMTrainer(object):
     def __init__(self, sess, dataset, dem, vis_fn, output_dir):
         self.dataset = dataset
         self.dem = dem
-        # self.sampler = sampler # TODO: factor out as train's param?
         self.vis_fn = vis_fn
-        # self.x_data = tf.placeholder(tf.float32, [None]+list(self.x_shape))
-        # self.x_model = tf.placeholder(tf.float32, [None]+list(self.x_shape))
         self.sess = sess
         self.log = []
         self.output_dir = output_dir
@@ -70,6 +67,7 @@ class DEMTrainer(object):
         ae_x = tf.placeholder(tf.float32, self.x_shape)
         encoder_fe_cost = self.dem.free_energy_wrt_x(ae_x)
         ae_cost = self.dem.autoencoder_cost(ae_x)
+        ae_vars = self.dem.get_trainable_vars(['encoder', 'decoder'])
 
         fe_cost_factor = 5e-5
 
@@ -78,11 +76,6 @@ class DEMTrainer(object):
             tf.abs(tf.gradients(fe_cost_factor * encoder_fe_cost, encoder_final_conv)[0]))
         aec_grad_mean = tf.reduce_mean(
             tf.abs(tf.gradients(ae_cost, encoder_final_conv)[0]))
-
-        ae_vars = self.dem.get_trainable_vars(['encoder', 'decoder'])
-        print 'autoencoder vars'
-        for v in ae_vars:
-            print v.name
 
         rbm_z_data = tf.placeholder(tf.float32, self.z_shape)
         rbm_z_model = tf.placeholder(tf.float32, self.z_shape)
@@ -122,6 +115,10 @@ class DEMTrainer(object):
                 # run sampler, get z_model
                 feed_dict = {} if sampler.is_persistent else {rbm_z_data: z_data}
                 z_model, _ = self.sess.run([sample_op, sampler_updates], feed_dict)
+
+                print 'z_data, mean: %s, std:%s' % (z_data.mean(), z_data.std())
+                print 'z_model, mean: %s, std:%s' % (z_model.mean(), z_model.std())
+
                 # # downward pass
                 # x_model = self.dem.decoder.predict(z_model)
 
@@ -193,10 +190,10 @@ class DEMTrainer(object):
         samples, _ = self.sess.run([sample_op, sampler_updates])
         print 'in _draw_samples: samples min: %.4f, max: %.4f' \
             % (samples.min(), samples.max())
-        samples = self.dem.decoder.predict(samples)
         return samples
 
     def _save_samples(self, samples, img_path):
+        samples = self.dem.decoder.predict(samples)
         batch_size = len(samples)
         rows, cols = utils.factorize_number(batch_size)
         self.vis_fn(samples, rows, cols, img_path)

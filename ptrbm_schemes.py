@@ -81,10 +81,15 @@ if __name__ == '__main__':
     ae.build_models(ae_folder) # load model
     assert len(encoded_dataset.x_shape) == 1
 
+    sub_xs, sub_ys = encoded_dataset.get_subset('train', 'bird')
+    encoded_dataset = Cifar10Wrapper(sub_xs, sub_ys,
+                                     encoded_dataset.test_xs,
+                                     encoded_dataset.test_ys)
+
     name = 'ptrbm_scheme1'
     scheme = TRAIN_SCHEMES[name]
     output_folder = os.path.join(
-        ae_folder, name+('_%d'%TRAIN_SCHEMES[name]['num_hid']))
+        ae_folder, name+('_%d_bird'%TRAIN_SCHEMES[name]['num_hid']))
 
     if os.path.exists(output_folder) and not scheme['force_retrain']:
         print '%s exists, skip training.' % name

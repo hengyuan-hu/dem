@@ -53,7 +53,7 @@ def pretrain(sess, rbm, dataset, decoder, train_config, vis_fn, parent_dir):
 
 
 if __name__ == '__main__':
-    np.random.seed(666)
+    np.random.seed(66699)
     sess = utils.create_session()
     K.set_session(sess)
 
@@ -68,13 +68,21 @@ if __name__ == '__main__':
     assert len(encoded_dataset.x_shape) == 1
 
     num_hid = 2000
-    rbm = RBM(encoded_dataset.x_shape[0], num_hid, None)
-
-    train_config = utils.TrainConfig(
-        lr=0.1, batch_size=100, num_epoch=20, use_pcd=False, cd_k=1)
-    # train_config = utils.TrainConfig(
-    #     lr=0.01, batch_size=100, num_epoch=20, use_pcd=True, cd_k=1)
-
     output_folder = os.path.join(ae_folder, 'test_pretrain')
+    # weights_file = os.path.join(
+    #     output_folder, 'ptrbm_hid2000_lr0.1_cd1', 'epoch_100_rbm.h5')
+    weights_file = '/home/hhu/Developer/dem/prod/cifar10_ae2_relu_6/ptrbm_scheme0/ptrbm_hid2000_lr0.1_cd1/epoch_100_rbm.h5'
+    rbm = RBM(None, None, weights_file)
+    # rbm = RBM(encoded_dataset.x_shape[0], num_hid, None)
+
+    # train_config = utils.TrainConfig(
+    #     lr=0.1, batch_size=100, num_epoch=100, use_pcd=False, cd_k=1)
+    train_config = utils.TrainConfig(
+        lr=0.01, batch_size=100, num_epoch=200, use_pcd=True, cd_k=5)
+
     pretrain(sess, rbm, encoded_dataset, ae.decoder,
              train_config, utils.vis_cifar10, output_folder)
+
+    # utils.initialize_uninitialized_variables_by_keras()
+    # h = sess.run(rbm._compute_up(encoded_dataset.test_xs))
+    # print 'mean hprob:', h.mean()
